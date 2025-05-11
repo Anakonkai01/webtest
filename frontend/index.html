@@ -3,243 +3,514 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cửa hàng Điện thoại - Test Dashboard V2</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Cửa hàng XYZ - VueJS & Bootstrap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <div id="toast-container">
-            <div v-for="toast in toasts" :key="toast.id" :class="['toast', toast.type]">
-                {{ toast.message }}
+    <div id="app" v-cloak>
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1150">
+            <div v-for="toast in toasts" :key="toast.id" :class="['toast', 'align-items-center', 'text-bg-' + toast.type, 'border-0']" role="alert" aria-live="assertive" aria-atomic="true" ref="toastElements" :data-toast-id="toast.id">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <strong>{{ toast.title || 'Thông báo' }}:</strong> {{ toast.message }}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" @click="removeToast(toast.id)" aria-label="Close"></button>
+                </div>
             </div>
         </div>
 
-        <nav>
-            <a href="index.html">Trang chủ Dashboard</a>
-            <span v-if="!isLoggedIn">
-                <a href="login.html" @click.prevent="currentView = 'login'">Đăng nhập</a>
-                <a href="register.html" @click.prevent="currentView = 'register'">Đăng ký</a>
-            </span>
-            <button v-if="isLoggedIn" @click="logoutUser" class="secondary">Đăng xuất ({{ username }} - {{ userRole }})</button>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-bold" href="#" @click.prevent="setView('productsPublicWithSidebar')">
+                    <i class="fas fa-store me-2"></i>Cửa hàng XYZ
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdownVue" aria-controls="navbarNavDropdownVue" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNavDropdownVue">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link" :class="{active: currentView === 'productsPublicWithSidebar'}" href="#" @click.prevent="setView('productsPublicWithSidebar')">
+                                <i class="fas fa-home me-1"></i>Trang chủ
+                            </a>
+                        </li>
+                        <li class="nav-item" v-if="canManageProducts">
+                            <a class="nav-link" :class="{active: currentView === 'productManagement'}" href="#" @click.prevent="setView('productManagement')">
+                                <i class="fas fa-cogs me-1"></i>Quản lý SP
+                            </a>
+                        </li>
+                         <li class="nav-item" v-if="isLoggedIn">
+                            <a class="nav-link" :class="{active: currentView === 'orders'}" href="#" @click.prevent="setView('orders')">
+                                <i class="fas fa-receipt me-1"></i>Đơn hàng
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="d-flex align-items-center">
+                        <a href="#" class="nav-link text-light me-3 position-relative" v-if="isBuyer" @click.prevent="setView('cart')">
+                            <i class="fas fa-shopping-cart fa-lg"></i>
+                            <span v-if="cartItemCount > 0" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ cartItemCount > 9 ? '9+' : cartItemCount }}
+                                <span class="visually-hidden">sản phẩm trong giỏ</span>
+                            </span>
+                        </a>
+                        <div v-if="!isLoggedIn" class="ms-auto">
+                            <button class="btn btn-outline-light me-2 btn-sm" type="button" @click="openLoginModal">
+                                <i class="fas fa-sign-in-alt me-1"></i>Đăng nhập
+                            </button>
+                            <button class="btn btn-warning btn-sm" type="button" @click="openRegisterModal">
+                                <i class="fas fa-user-plus me-1"></i>Đăng ký
+                            </button>
+                        </div>
+                        <div v-if="isLoggedIn" class="dropdown ms-auto">
+                            <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" id="userDropdownMenuButtonVue" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user-circle me-1"></i> {{ username }} <span class="badge bg-info text-dark ms-1">{{ userRole }}</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdownMenuButtonVue">
+                                <li><a class="dropdown-item" href="#" @click.prevent="setView('orders')" v-if="isBuyer">
+                                    <i class="fas fa-list-alt me-2"></i>Đơn hàng của tôi</a>
+                                </li>
+                                <li><hr class="dropdown-divider" v-if="isBuyer"></li>
+                                <li><button class="dropdown-item" type="button" @click="logoutUser">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </nav>
 
-        <div class="main-container">
-            <div v-if="!isLoggedIn && (currentView === 'login' || currentView === 'register')" class="auth-forms-container">
-                <div class="container auth-section" v-if="currentView === 'login'">
-                    <h2>Đăng nhập</h2>
-                    <form @submit.prevent="handleLogin" ref="loginFormRef">
-                        <div><label>Tên đăng nhập:</label><input type="text" v-model="loginForm.username" required></div>
-                        <div><label>Mật khẩu:</label><input type="password" v-model="loginForm.password" required></div>
-                        <button type="submit" :disabled="isLoading.auth">
-                            <span v-if="isLoading.auth" class="spinner-sm"></span> Đăng nhập
-                        </button>
-                    </form>
-                    <p>Chưa có tài khoản? <a href="#" @click.prevent="currentView = 'register'">Đăng ký</a></p>
-                </div>
-
-                <div class="container auth-section" v-if="currentView === 'register'">
-                    <h2>Đăng ký</h2>
-                    <form @submit.prevent="handleRegister" ref="registerFormRef">
-                        <div><label>Tên đăng nhập:</label><input type="text" v-model="registerForm.username" required minlength="3"></div>
-                        <div><label>Mật khẩu:</label><input type="password" v-model="registerForm.password" required minlength="6"></div>
-                        <div>
-                            <label>Vai trò:</label>
-                            <select v-model="registerForm.role">
-                                <option value="buyer">Người mua (Buyer)</option>
-                                <option value="seller">Người bán (Seller)</option>
-                            </select>
-                        </div>
-                        <button type="submit" :disabled="isLoading.auth">
-                            <span v-if="isLoading.auth" class="spinner-sm"></span> Đăng ký
-                        </button>
-                    </form>
-                    <p>Đã có tài khoản? <a href="#" @click.prevent="currentView = 'login'">Đăng nhập</a></p>
-                </div>
-            </div>
-
-            <div v-if="isLoggedIn">
-                <div class="tabs">
-                    <button :class="{active: currentView === 'productsPublic'}" @click="setView('productsPublic')">Sản phẩm</button>
-                    <button v-if="isBuyer" :class="{active: currentView === 'cart'}" @click="setView('cart')">Giỏ hàng ({{ cartItemCount }})</button>
-                    <button :class="{active: currentView === 'orders'}" @click="setView('orders')">Đơn hàng</button>
-                    <button v-if="canManageProducts" :class="{active: currentView === 'productManagement'}" @click="setView('productManagement')">Quản lý SP</button>
-                    </div>
-
-                <div class="container" v-if="canManageProducts && currentView === 'productManagement'">
-                    <h2>Quản lý Sản phẩm</h2>
-                    <div class="product-form-container">
-                        <h3>{{ editingProduct.id ? 'Sửa Sản phẩm ID: ' + editingProduct.id : 'Thêm Sản phẩm Mới' }}</h3>
-                        <form @submit.prevent="editingProduct.id ? handleUpdateProduct() : handleCreateProduct()">
-                            <div><label>Tên Model:</label><input type="text" v-model="productForm.model_name" required minlength="1"></div>
-                            <div><label>Hãng sản xuất:</label><input type="text" v-model="productForm.manufacturer" required minlength="1"></div>
-                            <div><label>Giá (VND):</label><input type="number" v-model.number="productForm.price" step="1000" required min="0"></div>
-                            <div><label>Tồn kho:</label><input type="number" v-model.number="productForm.stock_quantity" required min="0"></div>
-                            <div><label>Thông số:</label><textarea v-model="productForm.specifications" rows="3"></textarea></div>
-                            <button type="submit" :disabled="isLoading.productForm">
-                                <span v-if="isLoading.productForm" class="spinner-sm"></span> {{ editingProduct.id ? 'Cập nhật' : 'Thêm SP' }}
-                            </button>
-                            <button type="button" v-if="editingProduct.id" @click="cancelEditProduct" class="secondary" :disabled="isLoading.productForm">Hủy</button>
-                        </form>
-                    </div>
-                    <h3>{{ isAdmin ? 'Tất cả sản phẩm' : 'Sản phẩm của tôi' }}</h3>
-                    <div v-if="isLoading.products" class="loading-indicator">Đang tải sản phẩm quản lý... <span class="spinner"></span></div>
-                    <div v-for="phone in products" :key="phone.id" class="product-item management-item">
-                        <h4>{{ phone.model_name }} ({{ phone.manufacturer }}) - ID: {{phone.id}}</h4>
-                        <p>Giá: {{ formatCurrency(phone.price) }} - Tồn kho: {{ phone.stock_quantity }}</p>
-                        <p>Người tạo ID: {{ phone.user_id }} </p>
-                        <div v-if="canEditOrDeleteProduct(phone)">
-                            <button @click="startEditProduct(phone)" class="secondary btn-sm">Sửa</button>
-                            <button @click="handleDeleteProduct(phone.id)" class="danger btn-sm" :disabled="isLoading.deleteProduct === phone.id">
-                                <span v-if="isLoading.deleteProduct === phone.id" class="spinner-sm-light"></span> Xóa
-                            </button>
-                        </div>
-                    </div>
-                    <div v-if="!isLoading.products && products.length === 0">Không có sản phẩm nào để quản lý.</div>
-                    <div class="pagination-controls" v-if="pagination.total_pages > 1">
-                        <button @click="changePage(pagination.page - 1)" :disabled="!pagination.prev_page_url || isLoading.products">Trước</button>
-                        <span>Trang {{ pagination.page }}/{{ pagination.total_pages }}</span>
-                        <button @click="changePage(pagination.page + 1)" :disabled="!pagination.next_page_url || isLoading.products">Sau</button>
-                    </div>
-                </div>
-
-                <div class="container" v-if="currentView === 'productsPublic'">
-                    <h2>Danh sách Sản phẩm</h2>
-                    <div class="filter-sort-controls">
-                        <input type="text" v-model="filters.manufacturer" placeholder="Hãng" @input="applyFiltersAndSortDebounced">
-                        <input type="text" v-model="filters.model_name_contains" placeholder="Tên model" @input="applyFiltersAndSortDebounced">
-                        <input type="number" v-model.number="filters.price_min" placeholder="Giá từ" @input="applyFiltersAndSortDebounced" min="0">
-                        <input type="number" v-model.number="filters.price_max" placeholder="Giá đến" @input="applyFiltersAndSortDebounced" min="0">
-                        <select v-model="sort.sortBy" @change="applyFiltersAndSort">
-                            <option value="id">ID</option><option value="model_name">Tên</option><option value="price">Giá</option><option value="stock_quantity">Tồn kho</option>
-                        </select>
-                        <select v-model="sort.order" @change="applyFiltersAndSort">
-                            <option value="asc">Tăng dần</option><option value="desc">Giảm dần</option>
-                        </select>
-                        <button @click="applyFiltersAndSort" :disabled="isLoading.productsPublic">Lọc/Sắp xếp</button>
-                    </div>
-                    <div v-if="isLoading.productsPublic" class="loading-indicator">Đang tải sản phẩm... <span class="spinner"></span></div>
-                    <div v-if="!isLoading.productsPublic && productsPublic.length === 0">Không có sản phẩm nào.</div>
-                    <div id="products-list-public">
-                        <div v-for="phone in productsPublic" :key="phone.id" class="product-item">
-                            <h4>{{ phone.model_name }} ({{ phone.manufacturer }})</h4>
-                            <p>Giá: {{ formatCurrency(phone.price) }}</p>
-                            <p>Tồn kho: <span :class="{'low-stock': phone.stock_quantity < 10 && phone.stock_quantity > 0, 'out-of-stock': phone.stock_quantity === 0}">{{ phone.stock_quantity }}</span></p>
-                            <p>Thông số: {{ phone.specifications || 'N/A' }}</p>
-                            <p>Người bán ID: {{ phone.user_id }}</p>
-                            <button v-if="isBuyer" @click="addItemToCart(phone.id, 1)" :disabled="isLoading.cartAction === phone.id || phone.stock_quantity === 0">
-                                <span v-if="isLoading.cartAction === phone.id" class="spinner-sm-light"></span> {{ phone.stock_quantity === 0 ? 'Hết hàng' : 'Thêm vào giỏ' }}
-                            </button>
-                        </div>
-                    </div>
-                    <div class="pagination-controls" v-if="paginationPublic.total_pages > 1">
-                         <button @click="changePagePublic(paginationPublic.page - 1)" :disabled="!paginationPublic.prev_page_url || isLoading.productsPublic">Trước</button>
-                        <span>Trang {{ paginationPublic.page }}/{{ paginationPublic.total_pages }}</span>
-                        <button @click="changePagePublic(paginationPublic.page + 1)" :disabled="!paginationPublic.next_page_url || isLoading.productsPublic">Sau</button>
-                    </div>
-                </div>
-
-                <div class="container" v-if="isBuyer && currentView === 'cart'">
-                    <h2>Giỏ hàng của bạn</h2>
-                    <div v-if="isLoading.cart" class="loading-indicator">Đang tải giỏ hàng... <span class="spinner"></span></div>
-                    <div v-if="!isLoading.cart && (!cart.items || cart.items.length === 0)">Giỏ hàng trống.</div>
-                    <div id="cart-items" v-if="!isLoading.cart && cart.items && cart.items.length > 0">
-                        <div v-for="item in cart.items" :key="item.id" class="cart-item">
-                            <h4>{{ item.phone.model_name }} (Còn: {{ item.phone.stock_quantity }})</h4>
-                            <p>Giá: {{ formatCurrency(item.phone.price) }}</p>
-                            <p>
-                                Số lượng: <input type="number" :value="item.quantity" @change="updateCartItem(item.id, $event.target.value)" style="width: 70px;" min="0" :max="item.phone.stock_quantity" :disabled="isLoading.cartAction === item.id">
-                                <span v-if="isLoading.cartAction === item.id" class="spinner-sm"></span>
-                            </p>
-                            <p>Tổng: {{ formatCurrency(item.item_subtotal) }}</p>
-                            <button class="danger btn-sm" @click="removeCartItem(item.id)" :disabled="isLoading.cartAction === item.id">Xóa</button>
-                        </div>
-                    </div>
-                    <h3 v-if="!isLoading.cart && cart.items && cart.items.length > 0">Tổng tiền: {{ formatCurrency(cart.total_price || 0) }}</h3>
-                    <button @click="clearUserCart" class="danger" v-if="!isLoading.cart && cart.items && cart.items.length > 0" :disabled="isLoading.cartAction === 'clear_cart'">
-                         <span v-if="isLoading.cartAction === 'clear_cart'" class="spinner-sm-light"></span> Xóa toàn bộ
-                    </button>
-                    <button @click="proceedToCheckout" class="primary" v-if="!isLoading.cart && cart.items && cart.items.length > 0" :disabled="isLoading.orderAction">Tiến hành Đặt hàng</button>
-                
-                    <div class="container" v-if="showCheckoutForm">
-                        <h3>Thông tin Đặt hàng</h3>
-                        <form @submit.prevent="handlePlaceOrder">
-                            <div>
-                                <label for="shipping_address">Địa chỉ giao hàng:</label>
-                                <textarea v-model="shippingAddress" id="shipping_address" rows="3" required minlength="5"></textarea>
+        <div class="container-fluid mt-4">
+            <div v-if="currentView === 'productsPublicWithSidebar'" class="row">
+                <aside class="col-lg-3" id="filter-sidebar-vue">
+                    <div class="sticky-top filter-card-vue p-3 rounded shadow-sm">
+                        <h4><i class="fas fa-filter me-1"></i> Bộ lọc</h4>
+                        <hr>
+                        <form @submit.prevent="applyFiltersAndSort">
+                            <div class="mb-3">
+                                <label for="filter-manufacturer-vue" class="form-label">Hãng sản xuất</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-manufacturer-vue" v-model.trim="filters.manufacturer" placeholder="VD: Apple, Samsung">
                             </div>
-                            <button type="submit" :disabled="isLoading.orderAction">
-                                <span v-if="isLoading.orderAction" class="spinner-sm-light"></span> Xác nhận Đặt hàng
+                            <div class="mb-3">
+                                <label for="filter-model-name-vue" class="form-label">Tên model</label>
+                                <input type="text" class="form-control form-control-sm" id="filter-model-name-vue" v-model.trim="filters.model_name_contains" placeholder="VD: iPhone 15">
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col">
+                                    <label for="filter-price-min-vue" class="form-label">Giá từ</label>
+                                    <input type="number" class="form-control form-control-sm" id="filter-price-min-vue" v-model.number="filters.price_min" min="0" placeholder="0">
+                                </div>
+                                <div class="col">
+                                    <label for="filter-price-max-vue" class="form-label">Giá đến</label>
+                                    <input type="number" class="form-control form-control-sm" id="filter-price-max-vue" v-model.number="filters.price_max" min="0" placeholder="Không giới hạn">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="sort-by-vue" class="form-label">Sắp xếp theo</label>
+                                <select class="form-select form-select-sm" id="sort-by-vue" v-model="sort.sortBy">
+                                    <option value="id">Mặc định</option>
+                                    <option value="model_name">Tên sản phẩm</option>
+                                    <option value="price">Giá</option>
+                                    <option value="stock_quantity">Tồn kho</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="sort-order-vue" class="form-label">Thứ tự</label>
+                                <select class="form-select form-select-sm" id="sort-order-vue" v-model="sort.order">
+                                    <option value="asc">Tăng dần</option>
+                                    <option value="desc">Giảm dần</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 btn-sm" :disabled="isLoading.productsPublic">
+                                <span v-if="isLoading.productsPublic" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <i v-else class="fas fa-search me-1"></i> Áp dụng
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary w-100 btn-sm mt-2" @click="resetFiltersAndSort" :disabled="isLoading.productsPublic">
+                                <i class="fas fa-times me-1"></i> Xóa bộ lọc
                             </button>
                         </form>
                     </div>
-                </div>
-
-                <div class="container" v-if="currentView === 'orders'">
-                    <h2>{{ isAdmin || isSeller ? 'Quản lý Đơn hàng' : 'Đơn hàng của tôi' }}</h2>
-                    <div class="filter-sort-controls">
-                        <label>Trạng thái:</label>
-                        <select v-model="orderFilters.status" @change="applyOrderFiltersAndSort">
-                            <option value="">Tất cả</option>
-                            <option v-for="status in allowedOrderStatuses" :key="status" :value="status">{{ status.toUpperCase() }}</option>
-                        </select>
-                        <button @click="applyOrderFiltersAndSort" :disabled="isLoading.orders">Lọc</button>
+                </aside>
+                <main class="col-lg-9">
+                    <h2 class="mb-3">Tất cả sản phẩm</h2>
+                    <div v-if="isLoading.productsPublic" class="text-center my-5">
+                        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                            <span class="visually-hidden">Đang tải sản phẩm...</span>
+                        </div>
+                        <p class="mt-2">Đang tải sản phẩm...</p>
                     </div>
-                    <div v-if="isLoading.orders" class="loading-indicator">Đang tải đơn hàng... <span class="spinner"></span></div>
-                    <div v-if="!isLoading.orders && orders.length === 0">Không có đơn hàng nào.</div>
-                    <div v-for="order in orders" :key="order.id" class="order-item product-item">
-                        <h4>ĐH #{{ order.id }} - <span :style="{ fontWeight: 'bold', color: getStatusColor(order.status) }">{{ order.status.toUpperCase() }}</span></h4>
-                        <p>Người mua: {{ order.user.username }} (ID: {{order.user.id}})</p>
-                        <p>Ngày đặt: {{ formatDate(order.created_at) }}</p>
-                        <p>Tổng tiền: {{ formatCurrency(order.total_amount) }}</p>
-                        <p>Địa chỉ: {{ order.shipping_address }}</p>
-                        <h5>Chi tiết:</h5>
-                        <ul>
-                            <li v-for="item in order.items" :key="item.phone.id + '-' + item.id"> {{ item.phone.model_name }} (x{{ item.quantity }}) - Giá lúc mua: {{ formatCurrency(item.price_at_purchase) }}
+                    <div v-else-if="productsPublic.length === 0" class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>Không tìm thấy sản phẩm nào phù hợp với tiêu chí của bạn.
+                    </div>
+                    <div v-else class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+                        <div class="col" v-for="phone in productsPublic" :key="phone.id">
+                            <div class="card h-100 product-card-bs">
+                                <img :src="getProductImage(phone)" class="card-img-top" :alt="phone.model_name">
+                                <div class="card-body d-flex flex-column">
+                                    <h5 class="card-title">{{ phone.model_name }}</h5>
+                                    <p class="card-text text-muted small mb-1">{{ phone.manufacturer }}</p>
+                                    <p class="card-text small specifications-text mb-2" :title="phone.specifications">{{ truncateText(phone.specifications, 60) }}</p>
+                                    <p class="card-text price mt-auto mb-2">{{ formatCurrency(phone.price) }}</p>
+                                    <p class="card-text small mb-2">
+                                        <span class="stock-status p-1" :class="getStockStatusClass(phone.stock_quantity)">
+                                            {{ getStockStatusText(phone.stock_quantity) }}
+                                        </span>
+                                    </p>
+                                    <button v-if="isBuyer" class="btn btn-primary btn-sm w-100" @click="addItemToCart(phone.id, 1)" :disabled="isLoading.cartAction === phone.id || phone.stock_quantity === 0">
+                                        <span v-if="isLoading.cartAction === phone.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                        <i v-else class="fas fa-cart-plus me-1"></i>
+                                        {{ phone.stock_quantity === 0 ? 'Hết hàng' : 'Thêm vào giỏ' }}
+                                    </button>
+                                     <div v-else-if="!isLoggedIn" class="mt-auto">
+                                        <button class="btn btn-outline-secondary btn-sm w-100" @click="openLoginModal">Đăng nhập để mua</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <nav aria-label="Products pagination" class="mt-4 d-flex justify-content-center" v-if="!isLoading.productsPublic && paginationPublic.total_pages > 1">
+                        <ul class="pagination pagination-sm">
+                            <li class="page-item" :class="{disabled: !paginationPublic.prev_page_url}">
+                                <a class="page-link" href="#" @click.prevent="changePagePublic(paginationPublic.page - 1)">&laquo;</a>
+                            </li>
+                            <li class="page-item" v-for="pageNumber in simplePageRange(paginationPublic.page, paginationPublic.total_pages, 5)" :key="'pub_'+pageNumber" :class="{active: pageNumber === paginationPublic.page}">
+                                <a class="page-link" href="#" @click.prevent="changePagePublic(pageNumber)">{{ pageNumber }}</a>
+                            </li>
+                            <li class="page-item" :class="{disabled: !paginationPublic.next_page_url}">
+                                <a class="page-link" href="#" @click.prevent="changePagePublic(paginationPublic.page + 1)">&raquo;</a>
                             </li>
                         </ul>
-                        <div v-if="isBuyer && canCancelOrder(order.status)">
-                            <button @click="cancelUserOrder(order.id)" class="danger btn-sm" :disabled="isLoading.orderAction === order.id">Hủy Đơn</button>
+                    </nav>
+                </main>
+            </div>
+
+            <div class="container mt-4 view-container" v-else>
+                <div v-if="currentView === 'cart'">
+                    <h2 class="mb-4"><i class="fas fa-shopping-bag me-2"></i>Giỏ hàng của bạn</h2>
+                    <div v-if="isLoading.cart" class="text-center my-5"><div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div><p class="mt-2">Đang tải giỏ hàng...</p></div>
+                    <div v-else-if="!cart.items || cart.items.length === 0" class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Giỏ hàng của bạn đang trống. Hãy quay lại <a href="#" @click.prevent="setView('productsPublicWithSidebar')">trang sản phẩm</a> để mua hàng.</div>
+                    <div v-else>
+                        <div v-for="item in cart.items" :key="item.id" class="card cart-item-bs mb-3 shadow-sm">
+                           <div class="card-body d-md-flex align-items-center">
+                                <img :src="getProductImage(item.phone)" :alt="item.phone.model_name" class="img-thumbnail me-md-3 mb-2 mb-md-0" style="width: 100px; height: 100px; object-fit: contain;">
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-1">{{ item.phone.model_name }}</h5>
+                                    <p class="mb-1 text-muted small">Đơn giá: {{ formatCurrency(item.phone.price) }}</p>
+                                    <p class="mb-1 small" :class="{'text-danger fw-bold': item.quantity > item.phone.stock_quantity, 'text-warning': item.quantity <= item.phone.stock_quantity && item.phone.stock_quantity > 0 && item.phone.stock_quantity < 5}">
+                                        Kho: {{ item.phone.stock_quantity }}
+                                        <span v-if="item.quantity > item.phone.stock_quantity"> (Không đủ hàng!)</span>
+                                    </p>
+                                </div>
+                                <div class="d-flex align-items-center my-2 my-md-0 mx-md-3" style="min-width: 150px;">
+                                    <button class="btn btn-outline-secondary btn-sm" @click="updateCartItemQuantity(item.id, item.quantity - 1)" :disabled="item.quantity <= 1 || (isLoading.cartAction && isLoading.currentCartActionTarget === item.id)">-</button>
+                                    <input type="number" class="form-control form-control-sm text-center mx-2" :value="item.quantity" @change="updateCartItemQuantity(item.id, parseInt($event.target.value))" style="width: 60px;" min="1" :max="item.phone.stock_quantity" :disabled="isLoading.cartAction && isLoading.currentCartActionTarget === item.id">
+                                    <button class="btn btn-outline-secondary btn-sm" @click="updateCartItemQuantity(item.id, item.quantity + 1)" :disabled="item.quantity >= item.phone.stock_quantity || (isLoading.cartAction && isLoading.currentCartActionTarget === item.id)">+</button>
+                                </div>
+                                <div class="mx-md-3 text-md-end my-2 my-md-0" style="min-width: 120px;">
+                                    <p class="mb-0 fw-bold">{{ formatCurrency(item.item_subtotal) }}</p>
+                                </div>
+                                <button class="btn btn-outline-danger btn-sm" @click="confirmRemoveCartItem(item.id)" :disabled="isLoading.cartAction && isLoading.currentCartActionTarget === item.id">
+                                     <span v-if="isLoading.cartAction && isLoading.currentCartActionTarget === item.id" class="spinner-border spinner-border-sm"></span>
+                                     <i v-else class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div v-if="canManageOrders && order.status !== 'delivered' && order.status !== 'cancelled'" class="order-status-update">
-                            <select v-model="order.new_status_to_update">
-                                <option v-for="s in allowedOrderStatusesForUpdate(order.status)" :key="s" :value="s">{{ s.toUpperCase() }}</option>
-                            </select>
-                            <button @click="updateOrderStatus(order.id, order.new_status_to_update || order.status)" class="secondary btn-sm" :disabled="isLoading.orderAction === order.id">
-                                 <span v-if="isLoading.orderAction === order.id && currentActionType === 'update_status'" class="spinner-sm-light"></span> Cập nhật TT
+                        <hr>
+                        <div class="text-end">
+                            <h4>Tổng cộng: <span class="fw-bold">{{ formatCurrency(cart.total_price || 0) }}</span></h4>
+                            <button class="btn btn-danger me-2" @click="clearUserCart" :disabled="isLoading.cartAction === 'clear_cart'">
+                                <span v-if="isLoading.cartAction === 'clear_cart'" class="spinner-border spinner-border-sm"></span>
+                                <i v-else class="fas fa-trash-alt me-1"></i> Xóa toàn bộ
                             </button>
+                            <button class="btn btn-success" @click="openCheckoutModal" :disabled="isLoading.orderAction || !cart.items || cart.items.length === 0 || cart.items.some(i => i.quantity > i.phone.stock_quantity)">
+                                <i class="fas fa-credit-card me-1"></i> Tiến hành Đặt hàng
+                            </button>
+                             <div v-if="cart.items && cart.items.some(i => i.quantity > i.phone.stock_quantity)" class="text-danger small mt-2 text-end">
+                                Vui lòng điều chỉnh số lượng sản phẩm không đủ hàng trong kho.
+                            </div>
                         </div>
-                    </div>
-                     <div class="pagination-controls" v-if="paginationOrders.total_pages > 1">
-                        <button @click="changeOrderPage(paginationOrders.page - 1)" :disabled="!paginationOrders.prev_page_url || isLoading.orders">Trước</button>
-                        <span>Trang {{ paginationOrders.page }}/{{ paginationOrders.total_pages }}</span>
-                        <button @click="changeOrderPage(paginationOrders.page + 1)" :disabled="!paginationOrders.next_page_url || isLoading.orders">Sau</button>
                     </div>
                 </div>
-            </div> <div class="container api-log-viewer" v-if="isLoggedIn">
-                <h3>API Call Log 
-                    <button @click="showApiLog = !showApiLog" class="btn-sm secondary">{{ showApiLog ? 'Ẩn' : 'Hiện' }}</button>
-                    <button @click="clearApiLog" v-if="showApiLog && apiLog.length > 0" class="btn-sm danger">Xóa Log</button>
-                </h3>
-                <div v-if="showApiLog">
-                    <div v-if="apiLog.length === 0">Chưa có API call nào được ghi lại.</div>
-                    <div v-for="(log, index) in apiLog" :key="index" class="api-log-entry">
-                        <strong :class="log.isError ? 'error' : 'success'">{{ log.method }} {{ log.url }} - {{ log.status }}</strong>
-                        <p>Thời gian: {{ formatDate(log.timestamp, true) }}</p>
-                        <details>
-                            <summary>Request Data</summary>
-                            <pre>{{ JSON.stringify(log.requestData, null, 2) }}</pre>
-                        </details>
-                        <details>
-                            <summary>Response Data</summary>
-                            <pre>{{ JSON.stringify(log.responseData, null, 2) }}</pre>
-                        </details>
+
+                <div v-if="currentView === 'productManagement'">
+                    <h2 class="mb-4"><i class="fas fa-tasks me-2"></i>Quản lý Sản phẩm</h2>
+                    <button class="btn btn-success mb-3" @click="openProductFormModal()">
+                        <i class="fas fa-plus-circle me-1"></i> Thêm sản phẩm mới
+                    </button>
+                    <div v-if="isLoading.productForm && productsManaged.length === 0" class="text-center my-5"><div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div><p class="mt-2">Đang tải sản phẩm quản lý...</p></div>
+                    <div v-else-if="productsManaged.length === 0" class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Bạn chưa có sản phẩm nào để quản lý.</div>
+                    <div v-else class="table-responsive">
+                        <table class="table table-hover table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Model</th>
+                                    <th>Hãng</th>
+                                    <th class="text-end">Giá</th>
+                                    <th class="text-center">Tồn kho</th>
+                                    <th class="text-center">Người tạo ID</th>
+                                    <th class="text-center">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="phone in productsManaged" :key="phone.id">
+                                    <td>{{ phone.id }}</td>
+                                    <td>{{ phone.model_name }}</td>
+                                    <td>{{ phone.manufacturer }}</td>
+                                    <td class="text-end">{{ formatCurrency(phone.price) }}</td>
+                                    <td class="text-center">{{ phone.stock_quantity }}</td>
+                                    <td class="text-center">{{ phone.user_id || phone.added_by_user_id }}</td>
+                                    <td class="text-center">
+                                        <template v-if="canEditOrDeleteProduct(phone)">
+                                            <button class="btn btn-outline-primary btn-sm me-1" @click="openProductFormModal(phone)" title="Sửa">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" @click="handleDeleteProduct(phone.id)" :disabled="isLoading.deleteProduct === phone.id" title="Xóa">
+                                                <span v-if="isLoading.deleteProduct === phone.id" class="spinner-border spinner-border-sm"></span>
+                                                <i v-else class="fas fa-trash"></i>
+                                            </button>
+                                        </template>
+                                        <span v-else class="text-muted small">N/A</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <nav aria-label="Managed Products Pagination" class="mt-4 d-flex justify-content-center" v-if="!isLoading.productForm && paginationManaged.total_pages > 1">
+                        <ul class="pagination pagination-sm">
+                             <li class="page-item" :class="{disabled: !paginationManaged.prev_page_url}">
+                                <a class="page-link" href="#" @click.prevent="changePageManaged(paginationManaged.page - 1)">&laquo;</a>
+                            </li>
+                            <li class="page-item" v-for="pageNumber in simplePageRange(paginationManaged.page, paginationManaged.total_pages, 5)" :key="'man_'+pageNumber" :class="{active: pageNumber === paginationManaged.page}">
+                                <a class="page-link" href="#" @click.prevent="changePageManaged(pageNumber)">{{ pageNumber }}</a>
+                            </li>
+                            <li class="page-item" :class="{disabled: !paginationManaged.next_page_url}">
+                                <a class="page-link" href="#" @click.prevent="changePageManaged(paginationManaged.page + 1)">&raquo;</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+
+                <div v-if="currentView === 'orders'">
+                    <h2 class="mb-4" id="orders-view-title-vue"><i class="fas fa-file-invoice-dollar me-2"></i>{{ isAdmin || isSeller ? 'Quản lý Đơn hàng' : 'Đơn hàng của tôi' }}</h2>
+                     <div class="row g-3 align-items-center mb-3 bg-light p-3 rounded shadow-sm">
+                        <div class="col-md-4">
+                            <label for="order-filter-status-vue" class="form-label">Trạng thái đơn hàng:</label>
+                            <select class="form-select form-select-sm" id="order-filter-status-vue" v-model="orderFilters.status" @change="applyOrderFiltersAndSort">
+                                <option value="">Tất cả</option>
+                                <option v-for="status in allowedOrderStatuses" :key="status" :value="status">{{ status.charAt(0).toUpperCase() + status.slice(1) }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div v-if="isLoading.orders" class="text-center my-5"><div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div><p class="mt-2">Đang tải đơn hàng...</p></div>
+                    <div v-else-if="orders.length === 0" class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Không có đơn hàng nào.</div>
+                    <div v-else>
+                        <div v-for="order in orders" :key="order.id" class="card order-card-bs mb-3 shadow-sm">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap">
+                                <span>ĐH #{{ order.id }} - <strong :style="{color: getStatusColor(order.status)}">{{ order.status.toUpperCase() }}</strong></span>
+                                <small class="text-muted">Ngày đặt: {{ formatDate(order.created_at) }}</small>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text mb-1"><small class="text-muted">Người mua:</small> {{ order.user.username }} (ID: {{order.user.id}})</p>
+                                <p class="card-text mb-1"><small class="text-muted">Địa chỉ:</small> {{ order.shipping_address }}</p>
+                                <p class="card-text fw-bold">Tổng tiền: {{ formatCurrency(order.total_amount) }}</p>
+                                <h6 class="mt-3">Chi tiết sản phẩm:</h6>
+                                <ul class="list-group list-group-flush order-item-detail-bs">
+                                    <li v-for="item in order.items" :key="item.id + '-' + item.phone.id" class="list-group-item d-flex justify-content-between align-items-start p-2">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">{{item.phone.model_name}}</div>
+                                            <small class="text-muted">SL: {{item.quantity}} | Giá lúc mua: {{ formatCurrency(item.price_at_purchase) }}</small>
+                                        </div>
+                                    </li>
+                                </ul>
+                                <div v-if="isBuyer && ['pending', 'processing'].includes(order.status)" class="mt-3">
+                                    <button class="btn btn-danger btn-sm" @click="cancelUserOrder(order.id)" :disabled="isLoading.orderAction && isLoading.currentOrderActionTarget === order.id">
+                                        <span v-if="isLoading.orderAction && isLoading.currentOrderActionTarget === order.id" class="spinner-border spinner-border-sm"></span> Hủy Đơn
+                                    </button>
+                                </div>
+                                <div v-if="canManageOrders && !['delivered', 'cancelled', 'failed'].includes(order.status)" class="mt-3 pt-3 border-top">
+                                    <label class="form-label form-label-sm">Cập nhật trạng thái:</label>
+                                    <div class="input-group input-group-sm">
+                                        <select class="form-select" v-model="order.new_status_to_update">
+                                            <option v-for="s in allowedOrderStatusesForUpdate(order.status)" :key="s" :value="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
+                                        </select>
+                                        <button class="btn btn-outline-primary" @click="updateOrderStatus(order.id, order.new_status_to_update)" :disabled="(isLoading.orderAction && isLoading.currentOrderActionTarget === order.id) || order.new_status_to_update === order.status">
+                                            <span v-if="isLoading.orderAction && isLoading.currentOrderActionTarget === order.id" class="spinner-border spinner-border-sm"></span> Cập nhật
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <nav aria-label="Orders Pagination" class="mt-4 d-flex justify-content-center" v-if="!isLoading.orders && paginationOrders.total_pages > 1">
+                         <ul class="pagination pagination-sm">
+                             <li class="page-item" :class="{disabled: !paginationOrders.prev_page_url}">
+                                <a class="page-link" href="#" @click.prevent="changeOrderPage(paginationOrders.page - 1)">&laquo;</a>
+                            </li>
+                            <li class="page-item" v-for="pageNumber in simplePageRange(paginationOrders.page, paginationOrders.total_pages, 5)" :key="'ord_'+pageNumber" :class="{active: pageNumber === paginationOrders.page}">
+                                <a class="page-link" href="#" @click.prevent="changeOrderPage(pageNumber)">{{ pageNumber }}</a>
+                            </li>
+                            <li class="page-item" :class="{disabled: !paginationOrders.next_page_url}">
+                                <a class="page-link" href="#" @click.prevent="changeOrderPage(paginationOrders.page + 1)">&raquo;</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+
+            </div> </div> <div class="modal fade" id="loginModalVue" tabindex="-1" aria-labelledby="loginModalVueLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="loginModalVueLabel"><i class="fas fa-user-lock me-2"></i>Đăng nhập</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form @submit.prevent="handleLogin">
+                            <div class="mb-3">
+                                <label for="login-username-vue" class="form-label">Tên đăng nhập</label>
+                                <input type="text" class="form-control" id="login-username-vue" v-model.trim="loginForm.username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="login-password-vue" class="form-label">Mật khẩu</label>
+                                <input type="password" class="form-control" id="login-password-vue" v-model="loginForm.password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100" :disabled="isLoading.auth">
+                                <span v-if="isLoading.auth" class="spinner-border spinner-border-sm me-1"></span> Đăng nhập
+                            </button>
+                        </form>
+                    </div>
+                    <div class="modal-footer justify-content-center">
+                        Chưa có tài khoản? <a href="#" @click.prevent="switchToRegisterModal">Đăng ký ngay</a>
                     </div>
                 </div>
             </div>
+        </div>
 
-        </div> </div>
+        <div class="modal fade" id="registerModalVue" tabindex="-1" aria-labelledby="registerModalVueLabel" aria-hidden="true">
+             <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="registerModalVueLabel"><i class="fas fa-user-edit me-2"></i>Đăng ký tài khoản</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form @submit.prevent="handleRegister">
+                            <div class="mb-3">
+                                <label for="register-username-vue" class="form-label">Tên đăng nhập</label>
+                                <input type="text" class="form-control" id="register-username-vue" v-model.trim="registerForm.username" required minlength="3">
+                            </div>
+                            <div class="mb-3">
+                                <label for="register-password-vue" class="form-label">Mật khẩu</label>
+                                <input type="password" class="form-control" id="register-password-vue" v-model="registerForm.password" required minlength="6">
+                            </div>
+                            <div class="mb-3">
+                                <label for="register-role-vue" class="form-label">Bạn là</label>
+                                <select class="form-select" id="register-role-vue" v-model="registerForm.role">
+                                    <option value="buyer" selected>Người mua</option>
+                                    <option value="seller">Người bán</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-warning w-100" :disabled="isLoading.auth">
+                                <span v-if="isLoading.auth" class="spinner-border spinner-border-sm me-1"></span> Đăng ký
+                            </button>
+                        </form>
+                    </div>
+                     <div class="modal-footer justify-content-center">
+                        Đã có tài khoản? <a href="#" @click.prevent="switchToLoginModal">Đăng nhập</a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <div class="modal fade" id="productFormModalVue" tabindex="-1" aria-labelledby="productFormModalVueLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="productFormModalVueLabel">{{ productForm.id ? 'Sửa Sản phẩm' : 'Thêm Sản phẩm Mới' }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form @submit.prevent="handleSaveProduct">
+                            <input type="hidden" v-model="productForm.id">
+                            <div class="mb-3">
+                                <label for="pf-model_name" class="form-label">Tên Model <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="pf-model_name" v-model.trim="productForm.model_name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="pf-manufacturer" class="form-label">Hãng sản xuất <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="pf-manufacturer" v-model.trim="productForm.manufacturer" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="pf-price" class="form-label">Giá (VND) <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="pf-price" v-model.trim="productForm.price" placeholder="Ví dụ: 15000000" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="pf-stock_quantity" class="form-label">Tồn kho <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="pf-stock_quantity" v-model.number="productForm.stock_quantity" required min="0">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="pf-specifications" class="form-label">Thông số kỹ thuật</label>
+                                <textarea class="form-control" id="pf-specifications" v-model="productForm.specifications" rows="3"></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                <button type="submit" class="btn btn-primary" :disabled="isLoading.productForm">
+                                     <span v-if="isLoading.productForm" class="spinner-border spinner-border-sm me-1"></span>
+                                     {{ productForm.id ? 'Cập nhật' : 'Thêm sản phẩm' }}
+                                 </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="checkoutModalVue" tabindex="-1" aria-labelledby="checkoutModalVueLabel" aria-hidden="true">
+             <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="checkoutModalVueLabel"><i class="fas fa-cash-register me-2"></i>Thông tin Đặt hàng</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form @submit.prevent="handlePlaceOrder">
+                            <div class="mb-3">
+                                <label for="shipping-address-vue" class="form-label">Địa chỉ giao hàng <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="shipping-address-vue" v-model.trim="shippingAddress" rows="3" required minlength="5"></textarea>
+                            </div>
+                            <div class="alert alert-light">
+                                <h6>Chi tiết đơn hàng:</h6>
+                                <ul class="list-unstyled" v-if="cart.items && cart.items.length > 0">
+                                    <li v-for="item in cart.items" :key="item.id" class="small d-flex justify-content-between">
+                                        <span>{{item.phone.model_name}} x {{item.quantity}}</span>
+                                        <span>{{ formatCurrency(item.item_subtotal) }}</span>
+                                    </li>
+                                    <hr class="my-1">
+                                    <li class="fw-bold d-flex justify-content-between">
+                                        <span>Tổng tiền:</span>
+                                        <span>{{ formatCurrency(cart.total_price) }}</span>
+                                    </li>
+                                </ul>
+                                <p v-else class="small text-muted">Không có sản phẩm trong giỏ.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                <button type="submit" class="btn btn-primary" :disabled="isLoading.orderAction || !cart.items || cart.items.length === 0 || cart.items.some(i => i.quantity > i.phone.stock_quantity)">
+                                     <span v-if="isLoading.orderAction" class="spinner-border spinner-border-sm me-1"></span> Xác nhận Đặt hàng
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div> <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="script.js"></script>
 </body>
 </html>

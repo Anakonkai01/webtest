@@ -82,7 +82,7 @@ def create_app(config_name=None):
     from .routes.order_routes import orders_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth', strict_slashes=False)
-    app.register_blueprint(phones_bp, url_prefix='/phones', strict_slashes=False)
+    app.register_blueprint(phones_bp, url_prefix='/phones', strict_slashes=False) # KIỂM TRA ĐIỂM NÀY
     app.register_blueprint(cart_bp, url_prefix='/cart', strict_slashes=False)
     app.register_blueprint(orders_bp, url_prefix='/orders', strict_slashes=False)
 

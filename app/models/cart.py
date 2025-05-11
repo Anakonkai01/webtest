@@ -1,5 +1,5 @@
 # phone_management_api/app/models/cart.py
-from datetime import datetime, timezone # << THAY ĐỔI Ở ĐÂY
+from datetime import datetime, timezone # Đảm bảo timezone được import từ datetime
 from app.extensions import db
 from sqlalchemy import CheckConstraint, UniqueConstraint
 
@@ -9,10 +9,11 @@ class Cart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=False)
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.UTC)) # << THAY ĐỔI Ở ĐÂY
+    # SỬA Ở ĐÂY: timezone.utc (chữ thường)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, 
-                            default=lambda: datetime.now(timezone.UTC),        # << THAY ĐỔI Ở ĐÂY
-                            onupdate=lambda: datetime.now(timezone.UTC))      # << THAY ĐỔI Ở ĐÂY
+                            default=lambda: datetime.now(timezone.utc),
+                            onupdate=lambda: datetime.now(timezone.utc))
 
     user = db.relationship('User', back_populates='cart')
     items = db.relationship('CartItem', backref='cart', lazy='dynamic', cascade='all, delete-orphan')
@@ -20,13 +21,13 @@ class Cart(db.Model):
     @property
     def total_price(self):
         total = 0
-        for item in self.items: 
+        for item in self.items.all(): # Thêm .all() để duyệt qua các item thực sự
             if item.phone and item.phone.price is not None and item.quantity is not None:
                 total += item.quantity * item.phone.price
         return round(total, 2)
 
     def is_empty(self):
-        return self.items.first() is None
+        return not self.items.first() # True nếu không có item nào
 
     def __repr__(self):
         return f'<Cart ID: {self.id} UserID: {self.user_id}>'
@@ -38,7 +39,8 @@ class CartItem(db.Model):
     cart_id = db.Column(db.Integer, db.ForeignKey('carts.id'), nullable=False)
     phone_id = db.Column(db.Integer, db.ForeignKey('phones.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
-    added_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.UTC)) # << THAY ĐỔI Ở ĐÂY
+    # SỬA Ở ĐÂY: timezone.utc (chữ thường)
+    added_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     phone = db.relationship("Phone")
 

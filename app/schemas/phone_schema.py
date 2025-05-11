@@ -1,12 +1,14 @@
 # phone_management_api/app/schemas/phone_schema.py
-from marshmallow import fields, validate # Vẫn cần cho validate và fields thường
+from marshmallow import fields, validate
 from app.extensions import ma
 from app.models.phone import Phone
 
-class PhoneSchema(ma.SQLAlchemySchema): # Sử dụng SQLAlchemySchema để có thể tùy chỉnh mapping
+class PhoneSchema(ma.SQLAlchemySchema):
     class Meta:
         model = Phone
-        load_instance = True
+        # load_instance = True # Bỏ dòng này hoặc đặt thành False
+        # Hoặc nếu bạn muốn tường minh:
+        load_instance = False
 
     id = ma.auto_field(dump_only=True)
     model_name = ma.auto_field(
@@ -27,7 +29,8 @@ class PhoneSchema(ma.SQLAlchemySchema): # Sử dụng SQLAlchemySchema để có
     )
     specifications = ma.auto_field(
         validate=validate.Length(max=500, error="Thông số kỹ thuật tối đa 500 ký tự."), 
-        allow_none=True
+        allow_none=True # Cho phép trường này là null hoặc không có trong input
     )
-    # Ánh xạ user_id từ model Phone thành added_by_user_id trong JSON output
+    # user_id sẽ được gán trong route, không cần load từ request body khi tạo mới.
+    # added_by_user_id là để dump_only, lấy từ user_id của model.
     added_by_user_id = ma.Int(attribute="user_id", dump_only=True)

@@ -1,5 +1,5 @@
 # phone_management_api/app/models/order.py
-from datetime import datetime, timezone
+from datetime import datetime, timezone # Đảm bảo timezone được import từ datetime
 from app.extensions import db
 from sqlalchemy import CheckConstraint
 
@@ -8,11 +8,11 @@ ORDER_STATUS_PROCESSING = 'processing'
 ORDER_STATUS_SHIPPED = 'shipped'
 ORDER_STATUS_DELIVERED = 'delivered'
 ORDER_STATUS_CANCELLED = 'cancelled'
-ORDER_STATUS_FAILED = 'failed'
+ORDER_STATUS_FAILED = 'failed' # Đã thêm
 
 ALLOWED_ORDER_STATUSES = [
     ORDER_STATUS_PENDING, ORDER_STATUS_PROCESSING, ORDER_STATUS_SHIPPED,
-    ORDER_STATUS_DELIVERED, ORDER_STATUS_CANCELLED, ORDER_STATUS_FAILED
+    ORDER_STATUS_DELIVERED, ORDER_STATUS_CANCELLED, ORDER_STATUS_FAILED # Đã thêm
 ]
 
 class Order(db.Model):
@@ -22,11 +22,13 @@ class Order(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     total_amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), nullable=False, default=ORDER_STATUS_PENDING, index=True)
-    shipping_address = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.UTC)) # << THAY ĐỔI Ở ĐÂY
+    shipping_address = db.Column(db.Text, nullable=True) # Nên là nullable=False khi tạo đơn hàng
+    
+    # SỬA Ở ĐÂY: timezone.utc (chữ thường)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, 
-                            default=lambda: datetime.now(timezone.UTC),        # << THAY ĐỔI Ở ĐÂY
-                            onupdate=lambda: datetime.now(timezone.UTC))      # << THAY ĐỔI Ở ĐÂY
+                            default=lambda: datetime.now(timezone.utc),
+                            onupdate=lambda: datetime.now(timezone.utc))
 
     user = db.relationship('User', back_populates='orders')
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
