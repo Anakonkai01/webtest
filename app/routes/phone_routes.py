@@ -3,16 +3,11 @@ from flask import Blueprint, request, jsonify, current_app, url_for, abort
 from sqlalchemy import asc, desc
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request
 from marshmallow import ValidationError # <<< SỬA Ở ĐÂY
-
 from app.extensions import db
 from app.models.phone import Phone
-# Bỏ ValidationError khỏi import này
 from app.schemas import phone_schema, phones_schema 
 from app.utils.decorators import seller_or_admin_required
-
 phones_bp = Blueprint('phones_bp', __name__)
-
-# ... (Route handle_get_or_options_phones giữ nguyên) ...
 @phones_bp.route('/', methods=['GET', 'OPTIONS'])
 def handle_get_or_options_phones():
     if request.method == 'OPTIONS':
@@ -31,9 +26,8 @@ def handle_get_or_options_phones():
         if price_min_str:
             price_min_val = float(price_min_str)
             if price_min_val < 0: 
-                abort(400, description="Giá trị 'price_min' không được âm.")
-            query = query.filter(Phone.price >= price_min_val)
-        
+ abort(400, description="Giá trị 'price_min' không được âm.")
+ query = query.filter(Phone.price >= price_min_val)
         price_max_str = request.args.get('price_max')
         if price_max_str:
             price_max_val = float(price_max_str)
@@ -55,11 +49,9 @@ def handle_get_or_options_phones():
     }
     sort_column = allowed_sort_fields.get(sort_by_param)
     if sort_column is None:
-        abort(400, description=f"Trường sắp xếp không hợp lệ: '{sort_by_param}'. Các trường hợp lệ: {', '.join(allowed_sort_fields.keys())}")
-    
+ abort(400, description=f"Trường sắp xếp không hợp lệ: '{sort_by_param}'. Các trường hợp lệ: {', '.join(allowed_sort_fields.keys())}")
     if order_param not in ['asc', 'desc']:
-        abort(400, description="Tham số 'order' không hợp lệ. Chỉ chấp nhận 'asc' hoặc 'desc'.")
-    
+ abort(400, description="Tham số 'order' không hợp lệ. Chỉ chấp nhận 'asc' hoặc 'desc'.")
     query = query.order_by(desc(sort_column) if order_param == 'desc' else asc(sort_column))
 
     try:
@@ -100,7 +92,6 @@ def handle_get_or_options_phones():
         }
     }), 200
 
-@phones_bp.route('/', methods=['POST'])
 @jwt_required()
 @seller_or_admin_required
 def create_phone_route():
@@ -110,7 +101,7 @@ def create_phone_route():
         abort(400, description="Không có dữ liệu đầu vào.")
     try:
         data = phone_schema.load(json_data) 
-    except ValidationError as err: # Bắt lỗi từ marshmallow
+ except ValidationError as err: 
         abort(400, description=err.messages)
 
     new_phone = Phone(
@@ -119,7 +110,7 @@ def create_phone_route():
         price=data['price'],
         stock_quantity=data['stock_quantity'],
         specifications=data.get('specifications'), 
-        user_id=current_user_id
+ user_id=current_user_id
     )
     try:
         db.session.add(new_phone)
@@ -130,8 +121,6 @@ def create_phone_route():
         abort(500, description="Lỗi máy chủ khi lưu sản phẩm.")
     return jsonify(phone_schema.dump(new_phone)), 201
 
-# ... (Các route get_phone_route, update_phone_route, delete_phone_route cũng cần sửa tương tự nếu có dùng .load() và bắt ValidationError)
-
 @phones_bp.route('/<int:phone_id>', methods=['GET'])
 def get_phone_route(phone_id):
     phone = Phone.query.get_or_404(phone_id, description=f"Không tìm thấy điện thoại với ID: {phone_id}")
@@ -141,7 +130,7 @@ def get_phone_route(phone_id):
 @jwt_required()
 def update_phone_route(phone_id):
     if request.method == 'OPTIONS':
-        return jsonify(success=True) 
+ return jsonify(success=True) 
 
     current_user_id = int(get_jwt_identity())
     current_user_role = get_jwt().get("role")
@@ -162,7 +151,7 @@ def update_phone_route(phone_id):
         abort(400, description="Không có dữ liệu được cung cấp để cập nhật.")
     try:
         validated_data = phone_schema.load(json_data, partial=True, unknown='EXCLUDE')
-    except ValidationError as err: # Bắt lỗi từ marshmallow
+ except ValidationError as err: 
         abort(400, description=err.messages)
     if not validated_data:
          abort(400, description="Không có trường hợp lệ nào được cung cấp để cập nhật.")
@@ -183,7 +172,6 @@ def update_phone_route(phone_id):
         return jsonify(phone_schema.dump(phone)), 200
     else:
         return jsonify(message="Không có thay đổi nào được thực hiện.", data=phone_schema.dump(phone)), 200
-
 
 @phones_bp.route('/<int:phone_id>', methods=['DELETE', 'OPTIONS']) 
 @jwt_required()

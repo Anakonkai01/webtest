@@ -1,4 +1,3 @@
-# phone_management_api/app/routes/auth_routes.py
 from flask import Blueprint, request, jsonify, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
@@ -13,7 +12,7 @@ auth_bp = Blueprint('auth_bp', __name__)
 def register_user():
     json_data = request.get_json()
     if not json_data:
-        abort(400, description="Không có dữ liệu đầu vào. Vui lòng cung cấp JSON body.")
+ abort(400, description="Không có dữ liệu đầu vào. Vui lòng cung cấp JSON body.")
 
     data = user_register_schema.load(json_data) 
 
@@ -23,10 +22,10 @@ def register_user():
 
     if role not in User.REGISTRATION_ALLOWED_ROLES:
         abort(400, description=f"Vai trò '{role}' không được phép tự đăng ký.")
-    
+
     if role == 'admin':
         abort(403, description="Không thể tự đăng ký với vai trò 'admin' qua API công khai.")
-
+        
     if User.query.filter_by(username=username).first():
         abort(409, description="Tên người dùng đã tồn tại.")
 
@@ -36,7 +35,7 @@ def register_user():
         role=role
     )
     db.session.add(new_user)
-    db.session.commit()
+ db.session.commit()
     
     return jsonify(user_schema.dump(new_user)), 201
 
@@ -44,7 +43,7 @@ def register_user():
 def login_user():
     json_data = request.get_json()
     if not json_data:
-        abort(400, description="Không có dữ liệu đầu vào. Vui lòng cung cấp JSON body.")
+ abort(400, description="Không có dữ liệu đầu vào. Vui lòng cung cấp JSON body.")
 
     username = json_data.get('username')
     password = json_data.get('password')

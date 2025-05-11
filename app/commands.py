@@ -1,14 +1,13 @@
-# phone_management_api/app/commands.py
 import click
-from flask.cli import with_appcontext # Để command có thể truy cập app context
+from flask.cli import with_appcontext
 from app.extensions import db
 from app.models.user import User
 from app.models.phone import Phone
 from app.models.cart import Cart, CartItem
-from app.models.order import Order, OrderItem, ORDER_STATUS_PENDING, ORDER_STATUS_PROCESSING, ORDER_STATUS_SHIPPED # Import các hằng số status
+from app.models.order import Order, OrderItem, ORDER_STATUS_PENDING, ORDER_STATUS_PROCESSING, ORDER_STATUS_SHIPPED
 from werkzeug.security import generate_password_hash
 from datetime import datetime
-from app.utils.helpers import get_or_create_user_cart # Import helper nếu seed-db cần
+from app.utils.helpers import get_or_create_user_cart
 
 @click.command('init-db')
 @with_appcontext # Đảm bảo command chạy trong application context
@@ -47,7 +46,6 @@ def create_admin_command(username, password):
 
 @click.command("seed-db")
 @click.option('--no-clear', is_flag=True, help="Không xóa dữ liệu hiện có trước khi tạo dữ liệu mẫu.")
-@with_appcontext
 def seed_db_command(no_clear):
     """Xóa dữ liệu hiện có (trừ khi có --no-clear) và tạo dữ liệu mẫu."""
     
@@ -218,5 +216,3 @@ def seed_db_command(no_clear):
         db.session.rollback()
         click.echo(f"Lỗi khi tạo dữ liệu mẫu: {e}")
         click.echo("Tất cả thay đổi đã được hoàn tác (nếu có).")
-
-# Các command khác (init_db_command, create_admin_command) không thay đổi.

@@ -1,4 +1,3 @@
-# phone_management_api/app/routes/order_routes.py
 from flask import Blueprint, request, jsonify, abort, current_app, url_for
 from sqlalchemy import desc, asc
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
@@ -8,7 +7,7 @@ from app.extensions import db
 from app.models.order import (
     Order, OrderItem, ALLOWED_ORDER_STATUSES, ORDER_STATUS_PENDING, 
     ORDER_STATUS_CANCELLED, ORDER_STATUS_SHIPPED, ORDER_STATUS_DELIVERED, 
-    ORDER_STATUS_PROCESSING, ORDER_STATUS_FAILED # Thêm FAILED nếu có
+    ORDER_STATUS_PROCESSING, ORDER_STATUS_FAILED
 )
 from app.models.cart import Cart, CartItem
 from app.models.phone import Phone
@@ -36,27 +35,24 @@ def create_order_route():
 
     items_to_order_details = []
     calculated_total_amount = 0.0 # Sử dụng float cho tính toán tiền tệ
-
     try:
-        # Bắt đầu một transaction, tất cả các thao tác CSDL phải thành công hoặc rollback hết
-        with db.session.begin_nested(): # Hoặc không dùng nested nếu CSDL không hỗ trợ tốt, xử lý rollback thủ công
+        with db.session.begin_nested():
             for cart_item in cart.items.all():
-                phone = Phone.query.get(cart_item.phone_id) # Lấy thông tin sản phẩm mới nhất
+                phone = Phone.query.get(cart_item.phone_id)
 
                 if not phone:
-                    # Không nên abort ở đây nếu đang trong transaction, raise lỗi để bắt bên ngoài
-                    raise ValueError(f"Sản phẩm ID {cart_item.phone_id} trong giỏ không còn tồn tại.") 
-                
+                    raise ValueError(f"Sản phẩm ID {cart_item.phone_id} trong giỏ không còn tồn tại.")
+
                 if phone.stock_quantity < cart_item.quantity:
                     raise ValueError(f"Không đủ tồn kho cho '{phone.model_name}'. Yêu cầu: {cart_item.quantity}, còn: {phone.stock_quantity}.")
 
                 items_to_order_details.append({
-                    "phone_model_instance": phone, # Giữ instance để cập nhật stock
+                    "phone_model_instance": phone,
                     "quantity": cart_item.quantity,
-                    "price_at_purchase": float(phone.price) # Đảm bảo là float
+                    "price_at_purchase": float(phone.price)
                 })
                 calculated_total_amount += float(cart_item.quantity) * float(phone.price)
-            
+
             calculated_total_amount = round(calculated_total_amount, 2)
 
             new_order = Order(
@@ -67,7 +63,7 @@ def create_order_route():
             )
             db.session.add(new_order)
             db.session.flush() 
-
+            
             for item_detail in items_to_order_details:
                 phone_to_update = item_detail["phone_model_instance"]
                 order_item = OrderItem(
@@ -80,11 +76,10 @@ def create_order_route():
                 phone_to_update.stock_quantity -= item_detail["quantity"]
                 db.session.add(phone_to_update)
 
-            CartItem.query.filter_by(cart_id=cart.id).delete(synchronize_session=False) # Thêm synchronize_session
+            CartItem.query.filter_by(cart_id=cart.id).delete(synchronize_session=False)
             cart.updated_at = datetime.utcnow()
-        
-        db.session.commit() # Commit transaction chính
-    except ValueError as ve: # Bắt lỗi value từ kiểm tra logic
+        db.session.commit()
+    except ValueError as ve:
         db.session.rollback()
         abort(400, description=str(ve))
     except Exception as e:
@@ -133,9 +128,9 @@ def get_orders_list_route():
         if page <= 0: abort(400, description="'page' phải là số nguyên dương.")
         if per_page <= 0: abort(400, description="'per_page' phải là số nguyên dương.")
         if per_page > current_app.config.get('MAX_PER_PAGE', 100):
-            per_page = current_app.config.get('MAX_PER_PAGE', 100)
-    except: 
-        abort(400, description="'page' và 'per_page' phải là số nguyên hợp lệ.")
+             per_page = current_app.config.get('MAX_PER_PAGE', 100)
+    except:
+         abort(400, description="'page' và 'per_page' phải là số nguyên hợp lệ.")
 
     paginated_orders = query.paginate(page=page, per_page=per_page, error_out=False)
     
