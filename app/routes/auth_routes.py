@@ -2,35 +2,33 @@
 from flask import Blueprint, request, jsonify, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
-from marshmallow import ValidationError
 
 from app.extensions import db
 from app.models.user import User
-# Import schemas từ app.schemas package (nơi __init__.py đã khởi tạo chúng)
 from app.schemas import user_register_schema, user_schema
 
 auth_bp = Blueprint('auth_bp', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
-def register():
+def register_user():
     json_data = request.get_json()
     if not json_data:
-        abort(400, description="Không có dữ liệu đầu vào.")
-    try:
-        data = user_register_schema.load(json_data)
-    except ValidationError as err:
-        # Trả về lỗi validation của Marshmallow, error handler chung sẽ không bắt được cái này nếu ta return ở đây
-        return jsonify(errors=err.messages), 400 
+        abort(400, description="Không có dữ liệu đầu vào. Vui lòng cung cấp JSON body.")
+
+    data = user_register_schema.load(json_data) 
 
     username = data['username']
     password = data['password']
-    role = data['role'] # Marshmallow đã gán default 'buyer' nếu không có
+    role = data['role']
 
-    if role == 'admin': # Ngăn tự đăng ký admin
-        abort(403, description="Không thể tự đăng ký vai trò admin qua endpoint này.")
+    if role not in User.REGISTRATION_ALLOWED_ROLES:
+        abort(400, description=f"Vai trò '{role}' không được phép tự đăng ký.")
+    
+    if role == 'admin':
+        abort(403, description="Không thể tự đăng ký với vai trò 'admin' qua API công khai.")
 
     if User.query.filter_by(username=username).first():
-        abort(409, description="Tên người dùng đã tồn tại.") # 409 Conflict
+        abort(409, description="Tên người dùng đã tồn tại.")
 
     new_user = User(
         username=username,
@@ -39,13 +37,14 @@ def register():
     )
     db.session.add(new_user)
     db.session.commit()
+    
     return jsonify(user_schema.dump(new_user)), 201
 
 @auth_bp.route('/login', methods=['POST'])
-def login():
+def login_user():
     json_data = request.get_json()
     if not json_data:
-        abort(400, description="Không có dữ liệu đầu vào.")
+        abort(400, description="Không có dữ liệu đầu vào. Vui lòng cung cấp JSON body.")
 
     username = json_data.get('username')
     password = json_data.get('password')
@@ -54,6 +53,7 @@ def login():
         abort(400, description="Thiếu tên người dùng hoặc mật khẩu.")
 
     user = User.query.filter_by(username=username).first()
+
     if user and check_password_hash(user.password_hash, password):
         access_token = create_access_token(identity=str(user.id))
         return jsonify(access_token=access_token), 200

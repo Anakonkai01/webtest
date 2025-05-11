@@ -1,52 +1,52 @@
 # phone_management_api/app/models/order.py
-from datetime import datetime
+from datetime import datetime, timezone
 from app.extensions import db
 from sqlalchemy import CheckConstraint
-# from .user import User # Không cần nếu User model không import Order
-# from .phone import Phone # Không cần nếu Phone model không import OrderItem
 
-# --- ĐỊNH NGHĨA CÁC HẰNG SỐ TRẠNG THÁI ĐƠN HÀNG ---
 ORDER_STATUS_PENDING = 'pending'
 ORDER_STATUS_PROCESSING = 'processing'
 ORDER_STATUS_SHIPPED = 'shipped'
 ORDER_STATUS_DELIVERED = 'delivered'
-ORDER_STATUS_CANCELLED = 'cancelled' # <<< ĐÂY LÀ HẰNG SỐ QUAN TRỌNG
+ORDER_STATUS_CANCELLED = 'cancelled'
 ORDER_STATUS_FAILED = 'failed'
 
 ALLOWED_ORDER_STATUSES = [
-    ORDER_STATUS_PENDING,
-    ORDER_STATUS_PROCESSING,
-    ORDER_STATUS_SHIPPED,
-    ORDER_STATUS_DELIVERED,
-    ORDER_STATUS_CANCELLED, # <<< ĐẢM BẢO NÓ CÓ TRONG DANH SÁCH NÀY
-    ORDER_STATUS_FAILED
+    ORDER_STATUS_PENDING, ORDER_STATUS_PROCESSING, ORDER_STATUS_SHIPPED,
+    ORDER_STATUS_DELIVERED, ORDER_STATUS_CANCELLED, ORDER_STATUS_FAILED
 ]
 
 class Order(db.Model):
     __tablename__ = 'orders'
+
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False) # Buyer ID
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     total_amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(50), nullable=False, default=ORDER_STATUS_PENDING)
-    shipping_address = db.Column(db.Text, nullable=True) 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    status = db.Column(db.String(50), nullable=False, default=ORDER_STATUS_PENDING, index=True)
+    shipping_address = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.UTC)) # << THAY ĐỔI Ở ĐÂY
+    updated_at = db.Column(db.DateTime, 
+                            default=lambda: datetime.now(timezone.UTC),        # << THAY ĐỔI Ở ĐÂY
+                            onupdate=lambda: datetime.now(timezone.UTC))      # << THAY ĐỔI Ở ĐÂY
 
     user = db.relationship('User', back_populates='orders')
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
 
-    __table_args__ = (CheckConstraint(status.in_(ALLOWED_ORDER_STATUSES), name='ck_order_status_valid'),)
+    __table_args__ = (
+        CheckConstraint(status.in_(ALLOWED_ORDER_STATUSES), name='ck_order_status_valid'),
+        CheckConstraint('total_amount >= 0', name='ck_order_total_amount_non_negative'),
+    )
 
     def __repr__(self):
-        return f'<Order id={self.id} user_id={self.user_id} status="{self.status}">'
+        return f'<Order ID: {self.id} UserID: {self.user_id} Status: "{self.status}">'
 
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
+
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     phone_id = db.Column(db.Integer, db.ForeignKey('phones.id'), nullable=False) 
     quantity = db.Column(db.Integer, nullable=False)
-    price_at_purchase = db.Column(db.Float, nullable=False) 
+    price_at_purchase = db.Column(db.Float, nullable=False)
 
     phone = db.relationship("Phone") 
     
@@ -56,4 +56,4 @@ class OrderItem(db.Model):
     )
     
     def __repr__(self):
-        return f'<OrderItem id={self.id} order_id={self.order_id} phone_id={self.phone_id}>'
+        return f'<OrderItem ID: {self.id} OrderID: {self.order_id} PhoneID: {self.phone_id} Qty: {self.quantity}>'
