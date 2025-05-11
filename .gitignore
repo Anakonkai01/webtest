@@ -1,0 +1,55 @@
+# Môi trường ảo
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Files biên dịch của Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.Python
+
+# Files CSDL SQLite (nếu bạn không muốn đưa CSDL lên repo)
+# Bạn có thể quyết định commit CSDL dev với dữ liệu mẫu nếu muốn chia sẻ nhanh
+# nhưng CSDL production không bao giờ nên được commit.
+database_dev.db
+database_prod.db
+database_test.db
+database.db 
+
+# Coverage reports
+.coverage
+coverage.xml
+htmlcov/
+
+# IDE/Editor specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Secrets and sensitive config (nếu bạn có file riêng, ví dụ .env)
+.env
+instance/config.py # Nếu bạn dùng instance folder cho config nhạy cảm
+
+# Log files
+*.log
+logs/
+
+# Flask-Migrate (nếu dùng)
+migrations/ # Thường thì bạn sẽ commit thư mục này, nhưng file CSDL thì không.
+              # Tuy nhiên, nếu bạn không muốn người khác chạy migrate ngay, có thể ignore.
+              # Tốt nhất là commit `migrations/` nhưng ignore file CSDL thực tế.

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html">Trang chủ</a>
+        <a href="login.html">Đăng nhập</a>
+    </nav>
+    <div class="container">
+        <h1>Đăng ký</h1>
+        <form id="register-form">
+            <div>
+                <label for="reg-username">Tên đăng nhập:</label>
+                <input type="text" id="reg-username" name="username" required>
+            </div>
+            <div>
+                <label for="reg-password">Mật khẩu:</label>
+                <input type="password" id="reg-password" name="password" required>
+            </div>
+            <div>
+                <label for="reg-role">Vai trò:</label>
+                <select id="reg-role" name="role">
+                    <option value="buyer">Người mua (Buyer)</option>
+                    <option value="seller">Người bán (Seller)</option>
+                </select>
+            </div>
+            <button type="submit">Đăng ký</button>
+        </form>
+        <p id="register-message"></p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

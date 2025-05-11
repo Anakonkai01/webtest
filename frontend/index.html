@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cửa hàng Điện thoại - Vue</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+    <div id="app">
+        <nav>
+            <a href="index.html">Trang chủ</a>
+            <span v-if="!isLoggedIn">
+                <a href="login.html">Đăng nhập</a>
+                <a href="register.html">Đăng ký</a>
+            </span>
+            <button v-if="isLoggedIn" @click="logoutUser" class="secondary">Đăng xuất</button>
+        </nav>
+
+        <div class="container user-info" v-if="isLoggedIn">
+            <h2>Thông tin Người dùng</h2>
+            <p>Xin chào, {{ username }}!</p>
+            <p>Vai trò: {{ userRole }}</p>
+        </div>
+
+        <div class="container" v-if="canCreateProducts">
+            <h2>Thêm Sản phẩm Mới</h2>
+            <form @submit.prevent="handleCreateProduct">
+                <div><label>Tên Model:</label><input type="text" v-model="newProduct.model_name" required></div>
+                <div><label>Hãng sản xuất:</label><input type="text" v-model="newProduct.manufacturer" required></div>
+                <div><label>Giá:</label><input type="number" v-model.number="newProduct.price" step="0.01" required></div>
+                <div><label>Tồn kho:</label><input type="number" v-model.number="newProduct.stock_quantity" required></div>
+                <div><label>Thông số:</label><input type="text" v-model="newProduct.specifications"></div>
+                <button type="submit">Thêm Sản phẩm</button>
+            </form>
+            <p v-if="createProductMessage" :style="{ color: createProductMessageType === 'success' ? 'green' : 'red' }">{{ createProductMessage }}</p>
+        </div>
+
+        <div class="container">
+            <h2>Danh sách Sản phẩm</h2>
+            <div class="filter-sort-controls">
+                <input type="text" v-model="filters.manufacturer" placeholder="Hãng">
+                <input type="text" v-model="filters.model_name_contains" placeholder="Tên model chứa">
+                <input type="number" v-model.number="filters.price_min" placeholder="Giá từ">
+                <input type="number" v-model.number="filters.price_max" placeholder="Giá đến">
+                <select v-model="sort.sortBy">
+                    <option value="id">ID</option>
+                    <option value="model_name">Tên Model</option>
+                    <option value="price">Giá</option>
+                </select>
+                <select v-model="sort.order">
+                    <option value="asc">Tăng dần</option>
+                    <option value="desc">Giảm dần</option>
+                </select>
+                <button @click="applyFiltersAndSort">Áp dụng</button>
+            </div>
+
+            <div v-if="loadingProducts">Đang tải sản phẩm...</div>
+            <div v-if="!loadingProducts && products.length === 0">Không có sản phẩm nào.</div>
+            <div id="products-list">
+                <div v-for="phone in products" :key="phone.id" class="product-item">
+                    <h4>{{ phone.model_name }} ({{ phone.manufacturer }})</h4>
+                    <p>Giá: {{ formatCurrency(phone.price) }}</p>
+                    <p>Tồn kho: {{ phone.stock_quantity }}</p>
+                    <p>Thông số: {{ phone.specifications || 'N/A' }}</p>
+                    <button v-if="isBuyer" @click="addItemToCart(phone.id, 1)">Thêm vào giỏ</button>
+                </div>
+            </div>
+            <div id="pagination-controls" v-if="pagination.total_pages > 1">
+                <button @click="changePage(pagination.page - 1)" :disabled="!pagination.prev_page_url" class="secondary">Trang trước</button>
+                <span>Trang {{ pagination.page }} / {{ pagination.total_pages }}</span>
+                <button @click="changePage(pagination.page + 1)" :disabled="!pagination.next_page_url" class="secondary">Trang sau</button>
+            </div>
+        </div>
+
+        <div class="container" v-if="isBuyer && isLoggedIn">
+            <h2>Giỏ hàng của bạn</h2>
+            <div v-if="loadingCart">Đang tải giỏ hàng...</div>
+            <div v-if="!loadingCart && (!cart.items || cart.items.length === 0)">Giỏ hàng trống.</div>
+            <div id="cart-items" v-if="!loadingCart && cart.items && cart.items.length > 0">
+                <div v-for="item in cart.items" :key="item.id" class="cart-item">
+                    <h4>{{ item.phone.model_name }}</h4>
+                    <p>Giá: {{ formatCurrency(item.phone.price) }}</p>
+                    <p>
+                        Số lượng: <input type="number" :value="item.quantity" min="1" @change="updateCartItem(item.id, $event.target.value)" style="width: 60px;">
+                    </p>
+                    <p>Tổng: {{ formatCurrency(item.item_subtotal) }}</p>
+                    <button class="danger" @click="removeCartItem(item.id)">Xóa</button>
+                </div>
+            </div>
+            <h3>Tổng tiền: {{ formatCurrency(cart.total_price || 0) }}</h3>
+            <button @click="clearUserCart" class="danger" v-if="cart.items && cart.items.length > 0">Xóa toàn bộ Giỏ hàng</button>
+            <button @click="proceedToCheckout" class="primary" v-if="cart.items && cart.items.length > 0">Tiến hành Đặt hàng</button>
+        </div>
+         <div class="container" v-if="showCheckoutForm">
+            <h2>Thông tin Đặt hàng</h2>
+            <form @submit.prevent="handlePlaceOrder">
+                <div>
+                    <label for="shipping_address">Địa chỉ giao hàng:</label>
+                    <textarea v-model="shippingAddress" id="shipping_address" rows="3" required></textarea>
+                </div>
+                <button type="submit">Xác nhận Đặt hàng</button>
+            </form>
+             <p v-if="orderMessage" :style="{ color: orderMessageType === 'success' ? 'green' : 'red' }">{{ orderMessage }}</p>
+        </div>
+
+        <div class="container" v-if="isLoggedIn && orders.length > 0">
+            <h2>Đơn hàng của tôi</h2>
+            <div v-for="order in orders" :key="order.id" class="order-item product-item"> <h4>Đơn hàng #{{ order.id }} - <span :style="{ fontWeight: 'bold', color: getStatusColor(order.status) }">{{ order.status.toUpperCase() }}</span></h4>
+                <p>Ngày đặt: {{ new Date(order.created_at).toLocaleDateString() }}</p>
+                <p>Tổng tiền: {{ formatCurrency(order.total_amount) }}</p>
+                <p>Địa chỉ giao hàng: {{ order.shipping_address }}</p>
+                <h5>Chi tiết sản phẩm:</h5>
+                <ul>
+                    <li v-for="item in order.items" :key="item.id">
+                        {{ item.phone.model_name }} (x{{ item.quantity }}) - Giá lúc mua: {{ formatCurrency(item.price_at_purchase) }}
+                    </li>
+                </ul>
+                 <button v-if="isBuyer && canCancelOrder(order.status)" @click="cancelUserOrder(order.id)" class="danger">Hủy Đơn Hàng</button>
+            </div>
+        </div>
+
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
