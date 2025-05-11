@@ -1,14 +1,18 @@
-// frontend/script.js
-const API_BASE_URL = 'http://127.0.0.1:5000';
+import { fetchWithAuth, API_BASE_URL } from './services/api.js';
 const ALLOWED_ORDER_STATUSES_GLOBAL = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'failed'];
+import store from './store/index.js';
+import LoginModal from './components/LoginModal.vue';
+import RegisterModal from './components/RegisterModal.vue';
 
 const app = Vue.createApp({
     data() {
         return {
             // System
             currentView: 'productsPublicWithSidebar',
-            isLoading: { 
-                auth: false, 
+            isLoading: {
+                auth: false,
+                login: false, // Add loading state for login form
+                register: false, // Add loading state for register form
                 productsPublic: false, 
                 productForm: false, 
                 deleteProduct: null, 
@@ -22,23 +26,15 @@ const app = Vue.createApp({
             toasts: [],
             
             // Auth
-            isLoggedIn: false,
-            username: '',
-            userId: null,
-            userRole: '',
-            loginForm: { username: '', password: '' },
-            registerForm: { username: '', password: '', role: 'buyer' },
-            
+
             // Products
             productsPublic: [],
             paginationPublic: { page: 1, per_page: 9, total_pages: 1, total_items: 0, prev_page_url: null, next_page_url: null },
             filters: { manufacturer: '', model_name_contains: '', price_min: null, price_max: null },
             sort: { sortBy: 'id', order: 'asc' },
-            
+
             productsManaged: [],
             paginationManaged: { page: 1, per_page: 10, total_pages: 1, total_items: 0, prev_page_url: null, next_page_url: null },
-            productForm: { id: null, model_name: '', manufacturer: '', price: '', stock_quantity: null, specifications: '' }, 
-            
             // Cart
             cart: { items: [], total_price: 0, user_id: null },
             shippingAddress: '',
@@ -50,19 +46,20 @@ const app = Vue.createApp({
             allowedOrderStatuses: ALLOWED_ORDER_STATUSES_GLOBAL,
 
             // Bootstrap Modal Instances
-            loginModalInstance: null,
-            registerModalInstance: null,
             productFormModalInstance: null,
             checkoutModalInstance: null,
             bootstrapToastInstances: {},
         };
     },
+    components: {
+        LoginModal,
+        RegisterModal,
+    },
     computed: {
-        isBuyer() { return this.isLoggedIn && this.userRole === 'buyer'; },
-        isSeller() { return this.isLoggedIn && this.userRole === 'seller'; },
-        isAdmin() { return this.isLoggedIn && this.userRole === 'admin'; },
+        isBuyer() { return this.$store.getters['auth/isBuyer']; },
+        isSeller() { return this.$store.getters['auth/isSeller']; },
+        isAdmin() { return this.$store.getters['auth/isAdmin']; },
         canManageProducts() { return this.isSeller || this.isAdmin; },
-        canManageOrders() { return this.isSeller || this.isAdmin; },
         cartItemCount() {
             return this.cart && this.cart.items ? this.cart.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
         }
@@ -70,7 +67,6 @@ const app = Vue.createApp({
     methods: {
         // --- MODAL CONTROL ---
         openLoginModal() { if (this.loginModalInstance) this.loginModalInstance.show(); },
-        openRegisterModal() { if (this.registerModalInstance) this.registerModalInstance.show(); },
         openProductFormModal(product = null) {
             if (product) {
                 this.productForm = { 
@@ -85,7 +81,7 @@ const app = Vue.createApp({
                 this.productForm = { id: null, model_name: '', manufacturer: '', price: '', stock_quantity: null, specifications: '' };
             }
             if (this.productFormModalInstance) this.productFormModalInstance.show();
-        },
+        }, // Keep for now, will move to a ProductFormModal component later
         openCheckoutModal() { 
             if (this.cart.items && this.cart.items.some(i => i.quantity > i.phone.stock_quantity)) {
                 this.showToast('Một số sản phẩm trong giỏ vượt quá số lượng tồn kho. Vui lòng điều chỉnh.', 'Lỗi giỏ hàng', 'warning');
@@ -94,9 +90,6 @@ const app = Vue.createApp({
             }
             if (this.checkoutModalInstance) this.checkoutModalInstance.show(); 
         },
-        hideModal(modalInstance) { if (modalInstance) modalInstance.hide(); },
-        switchToRegisterModal() { this.hideModal(this.loginModalInstance); this.openRegisterModal(); },
-        switchToLoginModal() { this.hideModal(this.registerModalInstance); this.openLoginModal(); },
 
         // --- UI & UTILITIES ---
         showToast(message, title = 'Thông báo', type = 'info', duration = 4000) {
@@ -156,181 +149,49 @@ const app = Vue.createApp({
             let end = Math.min(totalPages, currentPage + wingSize);
             if (totalPages <= (wingSize * 2 + 1)) { 
                 start = 1;
-                end = totalPages;
+ end = totalPages;
             } else {
                  if (currentPage - wingSize <= 1) {
                     end = Math.min(totalPages, 1 + (wingSize * 2));
                 }
                 if (currentPage + wingSize >= totalPages) {
-                    start = Math.max(1, totalPages - (wingSize * 2));
+ start = Math.max(1, totalPages - (wingSize * 2));
                 }
             }
             for (let i = start; i <= end; i++) { range.push(i); }
             return range;
         },
-
-        // --- API Calls ---
-        getToken() { return localStorage.getItem('accessToken'); },
-        storeToken(token) { localStorage.setItem('accessToken', token); },
-        removeToken() {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('userId');
-            localStorage.removeItem('username');
-            localStorage.removeItem('userRole');
-        },
-        storeUserDetails(userId, role, username) {
-            localStorage.setItem('userId', userId);
-            localStorage.setItem('userRole', role);
-            localStorage.setItem('username', username);
-        },
-        async fetchWithAuth(url, options = {}, actionKey = null, itemId = null) {
-            if (actionKey) {
-                if (itemId !== null && itemId !== undefined) this.isLoading[actionKey] = itemId;
-                else this.isLoading[actionKey] = true;
-            }
-            const token = this.getToken();
-            const headers = { 'Content-Type': 'application/json', ...options.headers };
-            if (token) { headers['Authorization'] = `Bearer ${token}`; }
-            
-            console.log(`Workspaceing: ${options.method || 'GET'} ${url}`); // Log request
-            if (options.body) console.log("Request body:", options.body);
-
-            try {
-                const response = await fetch(url, { ...options, headers });
-                console.log(`Response status for ${url}: ${response.status}`); // Log status
-
-                if (response.status === 204) {
-                    console.log("Response 204 No Content");
-                    return null;
-                }
-
-                const responseData = await response.json();
-                console.log("Response data:", responseData); // Log response data
-
-                if (!response.ok) {
-                    const error = new Error(responseData.error?.message || responseData.msg || responseData.message || `Lỗi HTTP ${response.status}`);
-                    error.response = responseData; 
-                    error.status = response.status;
-                    throw error;
-                }
-                return responseData;
-            } catch (error) {
-                console.error(`API call to ${url} FAILED:`, error); // Log lỗi chi tiết hơn
-                // if (error.message.includes('Failed to fetch')) {
-                //     this.showToast('Không thể kết nối đến máy chủ API. Vui lòng kiểm tra lại.', 'Lỗi Mạng', 'danger');
-                // } else 
-                if (error.status !== 401) { // 401 thường do token hết hạn, đã xử lý ở updateLoginState
-                    this.showToast(error.message || 'Có lỗi từ API hoặc không thể kết nối.', 'Lỗi API', 'danger');
-                }
-                throw error; // Ném lại lỗi để các hàm gọi có thể bắt
-            } finally {
-                if (actionKey) this.isLoading[actionKey] = false;
-            }
-        },
-
-        // --- VIEW MANAGEMENT ---
         setView(viewName) {
-            this.currentView = viewName;
-            if (viewName === 'productsPublicWithSidebar' && (this.productsPublic.length === 0 || Object.keys(this.filters).some(k => this.filters[k]))) {
-                this.loadProductsPublic();
-            }
-            if (viewName === 'productManagement' && this.canManageProducts && this.productsManaged.length === 0) {
-                this.loadManagedProducts();
-            }
-            if (viewName === 'cart' && this.isBuyer) { 
-                this.loadUserCart();
-            }
-            if (viewName === 'orders' && this.isLoggedIn && this.orders.length === 0) {
-                this.loadUserOrders();
-            }
-            if (this.loginModalInstance && viewName !== 'loginModal') this.loginModalInstance.hide();
             if (this.registerModalInstance && viewName !== 'registerModal') this.registerModalInstance.hide();
             if (this.productFormModalInstance && viewName !== 'productFormModal') this.productFormModalInstance.hide();
             if (this.checkoutModalInstance && viewName !== 'checkoutModal') this.checkoutModalInstance.hide();
-        },
+        }, // These modal-specific hides will be moved or handled by Bootstrap directly in components
 
         // --- AUTH ---
-        async handleLogin() {
-            this.isLoading.auth = true;
-            try {
-                // URL cho login là /auth/login (KHÔNG có / cuối)
-                const data = await this.fetchWithAuth(`${API_BASE_URL}/auth/login`, {
-                    method: 'POST',
-                    body: JSON.stringify(this.loginForm),
-                });
-                if (data.access_token) {
-                    this.storeToken(data.access_token);
-                    const tokenPayload = JSON.parse(atob(data.access_token.split('.')[1]));
-                    this.storeUserDetails(tokenPayload.sub, tokenPayload.role, tokenPayload.username);
-                    this.updateLoginState();
-                    this.showToast(`Chào mừng ${this.username} trở lại!`, 'Đăng nhập thành công', 'success');
-                    this.loginForm = { username: '', password: '' };
-                    this.hideModal(this.loginModalInstance);
-                    this.loadInitialDataForUser();
-                    this.setView('productsPublicWithSidebar');
-                }
-            } catch (error) { 
-                 console.error("Lỗi đăng nhập trong handleLogin:", error);
-            }
-            finally { this.isLoading.auth = false; }
-        },
-        async handleRegister() {
-            this.isLoading.auth = true;
-            if (this.registerForm.password.length < 6) {
-                this.showToast('Mật khẩu phải có ít nhất 6 ký tự.', 'Lỗi đăng ký', 'warning');
-                this.isLoading.auth = false;
-                return;
-            }
-            try {
-                // URL cho register là /auth/register (KHÔNG có / cuối)
-                await this.fetchWithAuth(`${API_BASE_URL}/auth/register`, {
-                    method: 'POST',
-                    body: JSON.stringify(this.registerForm),
-                });
-                this.showToast('Đăng ký thành công! Vui lòng đăng nhập.', 'Thành công', 'success');
-                this.registerForm = { username: '', password: '', role: 'buyer' };
-                this.hideModal(this.registerModalInstance);
-                this.openLoginModal();
-            } catch (error) { 
-                console.error("Lỗi đăng ký trong handleRegister:", error);
-            }
-            finally { this.isLoading.auth = false; }
-        },
+        // handleLogin and handleRegister methods are now handled by the components and store actions
+
+        // Placeholder methods for clarity, will be removed once modals are fully componentized
+        handleLogin() { /* Logic moved to LoginModal.vue and store/auth.js */ },
+        handleRegister() { /* Logic moved to RegisterModal.vue and store/auth.js */ },
+        openRegisterModal() { /* Logic moved to RegisterModal component - Bootstrap handled */ },
+        switchToRegisterModal() { /* Logic moved to LoginModal/RegisterModal components */ },
+        switchToLoginModal() { /* Logic moved to LoginModal/RegisterModal components */ },
+        hideModal(modalInstance) { if (modalInstance) modalInstance.hide(); }, // Keep for non-auth modals for now
+
+
+
+        canManageOrders() { return this.isSeller || this.isAdmin; }, // Moved from computed for better organization
         logoutUser() {
-            this.removeToken();
-            this.updateLoginState();
+            this.$store.dispatch('logout');
             this.showToast('Bạn đã đăng xuất.', 'Thông báo', 'info');
-            this.cart = { items: [], total_price: 0, user_id: null }; 
-            this.orders = []; 
+            this.cart = { items: [], total_price: 0, user_id: null }; // Reset cart state
+            this.orders = []; // Reset orders state
             this.productsManaged = []; 
             this.setView('productsPublicWithSidebar');
         },
-        updateLoginState() {
-            const token = this.getToken();
-            if (token) {
-                try {
-                    const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-                    const now = Date.now() / 1000;
-                    if (tokenPayload.exp && tokenPayload.exp < now) {
-                        this.removeToken();
-                        this.isLoggedIn = false; this.userId = null; this.username = ''; this.userRole = '';
-                        // this.showToast('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'Thông báo', 'warning'); // Bỏ toast ở đây
-                        return;
-                    }
-                    this.isLoggedIn = true;
-                    this.userId = localStorage.getItem('userId');
-                    this.username = localStorage.getItem('username') || '';
-                    this.userRole = localStorage.getItem('userRole') || '';
-                } catch (e) {
-                    this.removeToken();
-                    this.isLoggedIn = false; this.userId = null; this.username = ''; this.userRole = '';
-                }
-            } else {
-                this.isLoggedIn = false; this.userId = null; this.username = ''; this.userRole = '';
-            }
-        },
         loadInitialDataForUser() {
-            if (this.isLoggedIn) {
+            // Use Vuex state for isLoggedIn
+            if (this.$store.getters['auth/isLoggedIn']) {
                 if (this.currentView === 'productsPublicWithSidebar' || this.productsPublic.length === 0) {
                     this.loadProductsPublic();
                 }
@@ -346,7 +207,7 @@ const app = Vue.createApp({
         async loadProductsPublic() {
             this.isLoading.productsPublic = true;
             let queryParams = `page=${this.paginationPublic.page}&per_page=${this.paginationPublic.per_page}`;
-            queryParams += `&sort_by=${this.sort.sortBy}&order=${this.sort.order}`;
+            queryParams += `&sort_by=${this.sort.sortBy}&order=${this.sort.order}`; // Ensure sort is applied
             for (const key in this.filters) {
                 if (this.filters[key] !== '' && this.filters[key] !== null && this.filters[key] !== undefined) {
                     queryParams += `&${key}=${encodeURIComponent(this.filters[key])}`;
@@ -381,12 +242,12 @@ const app = Vue.createApp({
         async loadManagedProducts(page = 1) {
             if (!this.canManageProducts) return;
             this.isLoading.productForm = true; 
-            let queryParams = `page=${page}&per_page=${this.paginationManaged.per_page}&sort_by=id&order=desc`;
+            let queryParams = `page=${page}&per_page=${this.paginationManaged.per_page}&sort_by=id&order=desc`; // Default sort for management
             try {
                  // **SỬA Ở ĐÂY: URL /phones/ (có / cuối)**
                 const result = await this.fetchWithAuth(`${API_BASE_URL}/phones/?${queryParams}`);
                 if (this.isSeller) {
-                    this.productsManaged = result.data.filter(p => p.user_id == this.userId || p.added_by_user_id == this.userId);
+                    this.productsManaged = result.data.filter(p => p.user_id == this.$store.getters['auth/userId'] || p.added_by_user_id == this.$store.getters['auth/userId']);
                 } else {
                      this.productsManaged = result.data;
                 }
@@ -401,7 +262,8 @@ const app = Vue.createApp({
             }
         },
         async handleSaveProduct() {
-            this.isLoading.productForm = true;
+            // This loading state is now managed locally within a potential ProductFormModal component
+            // this.isLoading.productForm = true; 
             const productData = { ...this.productForm };
             
             productData.price = parseFloat(this.productForm.price); 
@@ -410,7 +272,7 @@ const app = Vue.createApp({
             if (isNaN(productData.price) || productData.price < 0 || 
                 isNaN(productData.stock_quantity) || productData.stock_quantity < 0) {
                 this.showToast('Giá và tồn kho phải là số không âm hợp lệ.', 'Lỗi dữ liệu', 'warning');
-                this.isLoading.productForm = false;
+                // this.isLoading.productForm = false;
                 return;
             }
             try {
@@ -433,7 +295,7 @@ const app = Vue.createApp({
                 this.loadManagedProducts();
                 this.loadProductsPublic();
             } catch (error) { 
-                console.error("Lỗi khi lưu sản phẩm:", error);
+                 // Error handling is done by fetchWithAuth
             } finally {
                 this.isLoading.productForm = false;
             }
@@ -454,7 +316,8 @@ const app = Vue.createApp({
         },
         canEditOrDeleteProduct(phone) {
             if (!this.isLoggedIn) return false;
-            if (this.isAdmin) return true;
+            // Use Vuex getters for roles and user ID
+            if (this.$store.getters.isAdmin) return true;
             return this.isSeller && (phone.user_id == this.userId || phone.added_by_user_id == this.userId);
         },
 
@@ -465,8 +328,8 @@ const app = Vue.createApp({
             try {
                  // **SỬA Ở ĐÂY: URL /cart/ (có / cuối)**
                 const cartData = await this.fetchWithAuth(`${API_BASE_URL}/cart/`); 
-                this.cart = cartData || { items: [], total_price: 0, user_id: this.userId };
-            } catch (error) { this.cart = { items: [], total_price: 0, user_id: this.userId }; }
+                this.cart = cartData || { items: [], total_price: 0, user_id: this.$store.getters['auth/userId'] };
+            } catch (error) { this.cart = { items: [], total_price: 0, user_id: this.$store.state.userId }; }
             finally { if (showLoadingIndicator) this.isLoading.cart = false; }
         },
         async addItemToCart(phoneId, quantity = 1) {
@@ -571,7 +434,8 @@ const app = Vue.createApp({
             finally { this.isLoading.orderAction = false; }
         },
         async loadUserOrders(page = 1) {
-            if (!this.isLoggedIn) return;
+            // Use Vuex state for isLoggedIn
+            if (!this.$store.getters['auth/isLoggedIn']) return;
             this.isLoading.orders = true;
             let queryParams = `page=${page}&per_page=${this.paginationOrders.per_page}&sort_by=created_at&order=desc`;
             if (this.orderFilters.status) {
@@ -628,7 +492,8 @@ const app = Vue.createApp({
              finally { this.isLoading.orderAction = false; this.isLoading.currentOrderActionTarget = null; }
         },
         allowedOrderStatusesForUpdate(currentStatus) {
-            if (this.isAdmin) return ALLOWED_ORDER_STATUSES_GLOBAL.filter(s => s !== currentStatus && s !== 'failed');
+            // Use Vuex getters for roles
+            if (this.$store.getters.isAdmin) return ALLOWED_ORDER_STATUSES_GLOBAL.filter(s => s !== currentStatus && s !== 'failed');
             if (this.isSeller) {
                  if (currentStatus === 'pending') return ['processing', 'shipped', 'cancelled'];
                  if (currentStatus === 'processing') return ['shipped', 'cancelled'];
@@ -637,15 +502,15 @@ const app = Vue.createApp({
         },
     },
     mounted() {
-        this.updateLoginState();
+        this.$store.dispatch('checkLoginState');
         this.loadInitialDataForUser();
 
+
         this.$nextTick(() => {
-            if (document.getElementById('loginModalVue')) this.loginModalInstance = new bootstrap.Modal(document.getElementById('loginModalVue'));
-            if (document.getElementById('registerModalVue')) this.registerModalInstance = new bootstrap.Modal(document.getElementById('registerModalVue'));
             if (document.getElementById('productFormModalVue')) this.productFormModalInstance = new bootstrap.Modal(document.getElementById('productFormModalVue'));
             if (document.getElementById('checkoutModalVue')) this.checkoutModalInstance = new bootstrap.Modal(document.getElementById('checkoutModalVue'));
         });
     }
 });
+app.use(store); // Use the Vuex store
 app.mount('#app');

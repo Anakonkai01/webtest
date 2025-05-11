@@ -360,68 +360,6 @@
                     </nav>
                 </div>
 
-            </div> </div> <div class="modal fade" id="loginModalVue" tabindex="-1" aria-labelledby="loginModalVueLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="loginModalVueLabel"><i class="fas fa-user-lock me-2"></i>Đăng nhập</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form @submit.prevent="handleLogin">
-                            <div class="mb-3">
-                                <label for="login-username-vue" class="form-label">Tên đăng nhập</label>
-                                <input type="text" class="form-control" id="login-username-vue" v-model.trim="loginForm.username" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="login-password-vue" class="form-label">Mật khẩu</label>
-                                <input type="password" class="form-control" id="login-password-vue" v-model="loginForm.password" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100" :disabled="isLoading.auth">
-                                <span v-if="isLoading.auth" class="spinner-border spinner-border-sm me-1"></span> Đăng nhập
-                            </button>
-                        </form>
-                    </div>
-                    <div class="modal-footer justify-content-center">
-                        Chưa có tài khoản? <a href="#" @click.prevent="switchToRegisterModal">Đăng ký ngay</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal fade" id="registerModalVue" tabindex="-1" aria-labelledby="registerModalVueLabel" aria-hidden="true">
-             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="registerModalVueLabel"><i class="fas fa-user-edit me-2"></i>Đăng ký tài khoản</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form @submit.prevent="handleRegister">
-                            <div class="mb-3">
-                                <label for="register-username-vue" class="form-label">Tên đăng nhập</label>
-                                <input type="text" class="form-control" id="register-username-vue" v-model.trim="registerForm.username" required minlength="3">
-                            </div>
-                            <div class="mb-3">
-                                <label for="register-password-vue" class="form-label">Mật khẩu</label>
-                                <input type="password" class="form-control" id="register-password-vue" v-model="registerForm.password" required minlength="6">
-                            </div>
-                            <div class="mb-3">
-                                <label for="register-role-vue" class="form-label">Bạn là</label>
-                                <select class="form-select" id="register-role-vue" v-model="registerForm.role">
-                                    <option value="buyer" selected>Người mua</option>
-                                    <option value="seller">Người bán</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-warning w-100" :disabled="isLoading.auth">
-                                <span v-if="isLoading.auth" class="spinner-border spinner-border-sm me-1"></span> Đăng ký
-                            </button>
-                        </form>
-                    </div>
-                     <div class="modal-footer justify-content-center">
-                        Đã có tài khoản? <a href="#" @click.prevent="switchToLoginModal">Đăng nhập</a>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -509,6 +447,9 @@
                 </div>
             </div>
         </div>
+
+        <login-modal></login-modal>
+        <register-modal></register-modal>
 
     </div> <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="script.js"></script>
