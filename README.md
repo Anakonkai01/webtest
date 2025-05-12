@@ -6,8 +6,8 @@
 **Group:** [99]
 **Members:**
 * [Nguyen Tran Hoang Nhan] - [523H0164]
-* [Tran Van Qui] - [StudentID2]
-* [Dao Xuan Son] - [StudentID3]
+* [Tran Van Qui] - [523H0174]
+* [Dao Xuan Son] - [523H0176]
 
 ## 1. Project Introduction
 
