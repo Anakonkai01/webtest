@@ -37,7 +37,6 @@ const app = createApp({
         };
     },
     computed: {
-        // ... (Giữ nguyên computed properties) ...
         isBuyer() { return this.userRole === 'buyer'; },
         isSeller() { return this.userRole === 'seller'; },
         isAdmin() { return this.userRole === 'admin'; },
@@ -47,7 +46,6 @@ const app = createApp({
         allowedOrderStatuses() { return ALLOWED_ORDER_STATUSES_GLOBAL; }
     },
     methods: {
-        // --- Helpers & UI Methods (Giữ nguyên) ---
         setToastRef(el, id) { if (el) this.toastRefs[id] = el; },
         showToast(message, title = 'Thông báo', type = 'info', duration = 4000) {
             const id = 'toast-' + Date.now(); this.toasts.push({ id, message, title, type });
@@ -79,12 +77,10 @@ const app = createApp({
             return this.bootstrapModals[id];
         },
 
-        // --- View Management ---
         setView(viewName) {
             this.currentView = viewName;
             this.apiResponse = null;
 
-            // Reset detail data if not navigating to a detail view
             if (viewName !== 'productDetail') {
                 this.currentProductDetail = null;
             }
@@ -92,14 +88,12 @@ const app = createApp({
                 this.currentOrderDetail = null;
             }
 
-            // Load list data if navigating to a list view and data isn't already loaded (or to refresh)
             if (viewName === 'productsPublic' && (this.productsPublic.length === 0 || !this.isLoading.productsPublic) ) this.loadProductsPublic();
             else if (viewName === 'cart' && this.isBuyer) this.loadUserCart();
             else if (viewName === 'orders' && this.isLoggedIn) this.loadUserOrders();
             else if (viewName === 'productManagement' && this.canManageProducts) this.loadManagedProducts();
         },
 
-        // --- Auth Methods (Giữ nguyên) ---
         checkLoginState() {
             const token = getToken();
             if (token) {
@@ -179,29 +173,25 @@ const app = createApp({
         },
         async viewProductDetail(phoneId) {
             this.isLoading.productDetail = true;
-            this.currentProductDetail = null; // Reset trước khi gọi API
+            this.currentProductDetail = null; 
             this.apiResponse = null;
-            console.log(`Workspaceing details for phoneId: ${phoneId}`); // DEBUG
+            console.log(`Workspaceing details for phoneId: ${phoneId}`);
             try {
                 const result = await fetchWithAuth(`${API_BASE_URL}/phones/${phoneId}`);
-                console.log("API result for product detail:", result); // DEBUG
-                if (result && typeof result === 'object' && result.id) { // Kiểm tra xem có 'id' không để xác nhận là object sản phẩm
-                    this.currentProductDetail = result;
+                console.log("API result for product detail:", result); 
+                if (result && typeof result === 'object' && result.id) { 
                     this.apiResponse = result;
-                    this.setView('productDetail'); // Chuyển view sau khi có dữ liệu
+                    this.setView('productDetail'); 
                 } else {
-                    // API trả về thành công nhưng không có dữ liệu sản phẩm hợp lệ
                     console.error("Product data not found in API response or invalid format:", result);
                     this.showToast('Không tìm thấy thông tin sản phẩm từ API.', 'Lỗi dữ liệu', 'warning');
-                    this.currentProductDetail = null; // Đảm bảo là null
-                    // Không chuyển view hoặc quay về danh sách
-                    // this.setView('productsPublic'); // Tùy chọn
+                    this.currentProductDetail = null; 
+
                 }
             } catch (error) {
                 console.error("Error fetching product detail:", error, error.response); // DEBUG
                 this.showToast(error.message || 'Lỗi tải chi tiết sản phẩm.', 'Lỗi', 'danger');
-                this.currentProductDetail = null; // Đặt là null khi có lỗi
-                // this.setView('productsPublic'); // Tùy chọn: quay lại danh sách nếu lỗi nghiêm trọng
+                this.currentProductDetail = null; 
             } finally {
                 this.isLoading.productDetail = false;
             }
@@ -209,7 +199,6 @@ const app = createApp({
         openProductFormModal(product = null) {
              if (product) this.productForm = { ...product, price: Number(product.price), stock_quantity: Number(product.stock_quantity) }; // Đảm bảo price, stock là số
              else this.productForm = { id: null, model_name: '', manufacturer: '', price: null, stock_quantity: null, specifications: '' };
-             // Modal được trigger bằng data-bs-target trong HTML
         },
         async handleSaveProduct() {
             this.isLoading.productForm = true; this.apiResponse = null;
@@ -422,7 +411,7 @@ const app = createApp({
     },
     mounted() {
         this.checkLoginState();
-        if (!this.isLoggedIn) { // Chỉ tải sản phẩm public nếu chưa đăng nhập, nếu đã đăng nhập thì checkLoginState sẽ gọi loadDataForLoggedInUser
+        if (!this.isLoggedIn) { 
             this.loadProductsPublic();
         }
 
@@ -434,12 +423,11 @@ const app = createApp({
     },
     watch: {
         isLoggedIn(newVal, oldVal) {
-            if (newVal === true && oldVal === false) { // Chỉ khi thay đổi từ false sang true (vừa đăng nhập)
+            if (newVal === true && oldVal === false) { 
                 this.loadDataForLoggedInUser();
-            } else if (newVal === false && oldVal === true) { // Vừa đăng xuất
-                // Dữ liệu đã được xóa trong clearAuthData()
-                if(this.currentView !== 'productsPublic') this.setView('productsPublic'); // Nếu không ở trang chủ thì về trang chủ
-                else if (this.productsPublic.length === 0) this.loadProductsPublic(); // Nếu đang ở trang chủ mà chưa có sp thì tải
+            } else if (newVal === false && oldVal === true) { 
+                if(this.currentView !== 'productsPublic') this.setView('productsPublic'); 
+                else if (this.productsPublic.length === 0) this.loadProductsPublic(); 
             }
         }
     }

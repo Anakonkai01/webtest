@@ -6,8 +6,7 @@ from app.models.phone import Phone
 class PhoneSchema(ma.SQLAlchemySchema):
     class Meta:
         model = Phone
-        # load_instance = True # Bỏ dòng này hoặc đặt thành False
-        # Hoặc nếu bạn muốn tường minh:
+
         load_instance = False
 
     id = ma.auto_field(dump_only=True)
@@ -29,8 +28,7 @@ class PhoneSchema(ma.SQLAlchemySchema):
     )
     specifications = ma.auto_field(
         validate=validate.Length(max=500, error="Thông số kỹ thuật tối đa 500 ký tự."), 
-        allow_none=True # Cho phép trường này là null hoặc không có trong input
+        allow_none=True
     )
-    # user_id sẽ được gán trong route, không cần load từ request body khi tạo mới.
-    # added_by_user_id là để dump_only, lấy từ user_id của model.
+
     added_by_user_id = ma.Int(attribute="user_id", dump_only=True)

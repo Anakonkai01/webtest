@@ -9,7 +9,6 @@ class Cart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=False)
 
-    # SỬA Ở ĐÂY: timezone.utc (chữ thường)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, 
                             default=lambda: datetime.now(timezone.utc),
@@ -39,7 +38,6 @@ class CartItem(db.Model):
     cart_id = db.Column(db.Integer, db.ForeignKey('carts.id'), nullable=False)
     phone_id = db.Column(db.Integer, db.ForeignKey('phones.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
-    # SỬA Ở ĐÂY: timezone.utc (chữ thường)
     added_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     phone = db.relationship("Phone")

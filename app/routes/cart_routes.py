@@ -2,12 +2,11 @@
 from flask import Blueprint, request, jsonify, abort, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from datetime import datetime
-from marshmallow import ValidationError # <<< SỬA Ở ĐÂY: Import trực tiếp từ marshmallow
+from marshmallow import ValidationError # 
 
 from app.extensions import db
 from app.models.cart import Cart, CartItem
 from app.models.phone import Phone
-# Bỏ ValidationError khỏi import này nếu nó không được export từ app.schemas
 from app.schemas import cart_schema_output, cart_item_input_schema, cart_item_update_schema 
 from app.utils.decorators import buyer_required
 from app.utils.helpers import get_or_create_user_cart
@@ -15,8 +14,7 @@ import traceback
 
 cart_bp = Blueprint('cart_bp', __name__)
 
-# ... (các route còn lại giữ nguyên logic bắt ValidationError)
-# Ví dụ trong add_item_to_cart_route:
+
 @cart_bp.route('/items', methods=['POST', 'OPTIONS'])
 @jwt_required()
 @buyer_required
@@ -34,10 +32,9 @@ def add_item_to_cart_route():
     
     try:
         data = cart_item_input_schema.load(json_data)
-    except ValidationError as err: # Bắt lỗi ValidationError trực tiếp từ marshmallow
+    except ValidationError as err: 
         current_app.logger.warning(f"Lỗi validate dữ liệu thêm vào giỏ: {err.messages}")
         abort(400, description=err.messages)
-    # ... (phần còn lại của hàm) ...
     phone_id_to_add = data['phone_id']
     quantity_to_add = data['quantity']
 
@@ -77,8 +74,6 @@ def add_item_to_cart_route():
     
     return jsonify(cart_schema_output.dump(cart)), 200
 
-# Sửa tương tự cho các route khác trong file này nếu chúng cũng import và bắt ValidationError từ app.schemas
-# Ví dụ: update_cart_item_route
 @cart_bp.route('/items/<int:cart_item_id>', methods=['PUT', 'OPTIONS'])
 @jwt_required()
 @buyer_required
@@ -102,7 +97,7 @@ def update_cart_item_route(cart_item_id):
     
     try:
         data = cart_item_update_schema.load(json_data)
-    except ValidationError as err: # Bắt lỗi ValidationError trực tiếp từ marshmallow
+    except ValidationError as err: 
         abort(400, description=err.messages)
         
     new_quantity = data['quantity']
@@ -135,9 +130,6 @@ def update_cart_item_route(cart_item_id):
     return jsonify(message=message, cart=cart_schema_output.dump(cart)), 200
 
 
-# Các route còn lại (view_cart_route, remove_cart_item_route, clear_cart_route)
-# không load dữ liệu bằng schema nên không cần bắt ValidationError từ Marshmallow load.
-# Chúng vẫn giữ nguyên logic xử lý OPTIONS.
 
 @cart_bp.route('/', methods=['GET', 'OPTIONS'])
 @jwt_required()

@@ -1,6 +1,6 @@
 # phone_management_api/app/commands.py
 import click
-from flask.cli import with_appcontext # Để command có thể truy cập app context
+from flask.cli import with_appcontext 
 from app.extensions import db
 from app.models.user import User
 from app.models.phone import Phone
@@ -8,13 +8,12 @@ from app.models.cart import Cart, CartItem
 from app.models.order import Order, OrderItem, ORDER_STATUS_PENDING, ORDER_STATUS_PROCESSING, ORDER_STATUS_SHIPPED # Import các hằng số status
 from werkzeug.security import generate_password_hash
 from datetime import datetime
-from app.utils.helpers import get_or_create_user_cart # Import helper nếu seed-db cần
+from app.utils.helpers import get_or_create_user_cart 
 
 @click.command('init-db')
-@with_appcontext # Đảm bảo command chạy trong application context
+@with_appcontext 
 def init_db_command():
     """Xóa các bảng hiện có (nếu có) và tạo lại cấu trúc CSDL."""
-    # db.drop_all() # Tùy chọn: Xóa tất cả bảng trước khi tạo lại
     db.create_all()
     click.echo('Đã khởi tạo cơ sở dữ liệu (các bảng đã được tạo).')
 
@@ -101,12 +100,10 @@ def seed_db_command(no_clear):
         db.session.flush() 
         click.echo(f"Đã xử lý {len(users_to_create)} users.")
 
-        # --- TẠO PHONES (ĐÃ SỬA) ---
         seller_apple = created_users_map.get('seller_apple')
         seller_samsung = created_users_map.get('seller_samsung')
         seller_xiaomi = created_users_map.get('seller_xiaomi')
 
-        # Danh sách dữ liệu phone, mỗi dict chứa các thuộc tính của Phone VÀ user_id của owner
         phones_data_with_owner_id = []
         if seller_apple:
             phones_data_with_owner_id.extend([
@@ -130,17 +127,15 @@ def seed_db_command(no_clear):
 
         created_phones_list = []
         for phone_data_item in phones_data_with_owner_id:
-            # Tạo Phone object trực tiếp với các key mà model Phone chấp nhận
-            # user_id là một cột trong model Phone
+
             phone = Phone(**phone_data_item) 
             db.session.add(phone)
             created_phones_list.append(phone)
         
-        db.session.flush() # Flush để phone có ID trước khi tạo CartItem/OrderItem
+        db.session.flush()
         click.echo(f"Đã xử lý {len(created_phones_list)} phones.")
 
 
-        # --- TẠO CARTS VÀ CARTITEMS ---
         buyer_john = created_users_map.get('buyer_john')
         if buyer_john and len(created_phones_list) >= 2:
             cart_john = get_or_create_user_cart(buyer_john.id)
@@ -164,17 +159,15 @@ def seed_db_command(no_clear):
 
         db.session.flush()
 
-        # --- TẠO ORDERS VÀ ORDERITEMS ---
         buyer_mike = created_users_map.get('buyer_mike')
         sample_shipping_address = "123 Đường ABC, Phường XYZ, Quận LMN, TP. HCM"
         orders_created_count = 0
-        if buyer_mike and len(created_phones_list) >= 4: # Cần ít nhất 2 phone khác nhau cho ví dụ
+        if buyer_mike and len(created_phones_list) >= 4:
             phone1_order = created_phones_list[3] 
             phone2_order = created_phones_list[0] 
             
             if phone1_order.stock_quantity >= 1 and phone2_order.stock_quantity >= 1:
                 order_mike_total = (phone1_order.price * 1) + (phone2_order.price * 1)
-                # Kiểm tra order đã tồn tại chưa nếu --no-clear
                 existing_order_mike = Order.query.filter_by(user_id=buyer_mike.id, total_amount=order_mike_total).first()
                 if not existing_order_mike:
                     order_mike = Order(user_id=buyer_mike.id, total_amount=order_mike_total, 
@@ -219,4 +212,3 @@ def seed_db_command(no_clear):
         click.echo(f"Lỗi khi tạo dữ liệu mẫu: {e}")
         click.echo("Tất cả thay đổi đã được hoàn tác (nếu có).")
 
-# Các command khác (init_db_command, create_admin_command) không thay đổi.

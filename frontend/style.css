@@ -1,7 +1,7 @@
 /* frontend/style.css */
 body {
     font-family: sans-serif;
-    padding-top: 70px; /* Cho navbar sticky */
+    padding-top: 70px; 
 }
 
 [v-cloak] {
@@ -13,12 +13,11 @@ body {
 }
 
 .price {
-    color: #dc3545; /* Màu đỏ cho giá */
+    color: #dc3545; 
     font-weight: bold;
     font-size: 1.2em;
 }
 
-/* Thêm style cho card sản phẩm nếu muốn */
 .card {
     transition: transform .2s ease-out, box-shadow .2s ease-out;
 }
@@ -27,7 +26,6 @@ body {
     box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
 }
 
-/* Style cho toast nếu cần ghi đè */
 .toast-container {
-    z-index: 1150 !important; /* Đảm bảo toast nổi trên modal backdrop */
+    z-index: 1150 !important; 
 }

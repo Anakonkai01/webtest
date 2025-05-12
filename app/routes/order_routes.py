@@ -35,25 +35,23 @@ def create_order_route():
     shipping_address = order_input_data['shipping_address']
 
     items_to_order_details = []
-    calculated_total_amount = 0.0 # Sử dụng float cho tính toán tiền tệ
+    calculated_total_amount = 0.0 
 
     try:
-        # Bắt đầu một transaction, tất cả các thao tác CSDL phải thành công hoặc rollback hết
-        with db.session.begin_nested(): # Hoặc không dùng nested nếu CSDL không hỗ trợ tốt, xử lý rollback thủ công
+        with db.session.begin_nested(): 
             for cart_item in cart.items.all():
-                phone = Phone.query.get(cart_item.phone_id) # Lấy thông tin sản phẩm mới nhất
+                phone = Phone.query.get(cart_item.phone_id) 
 
                 if not phone:
-                    # Không nên abort ở đây nếu đang trong transaction, raise lỗi để bắt bên ngoài
                     raise ValueError(f"Sản phẩm ID {cart_item.phone_id} trong giỏ không còn tồn tại.") 
                 
                 if phone.stock_quantity < cart_item.quantity:
                     raise ValueError(f"Không đủ tồn kho cho '{phone.model_name}'. Yêu cầu: {cart_item.quantity}, còn: {phone.stock_quantity}.")
 
                 items_to_order_details.append({
-                    "phone_model_instance": phone, # Giữ instance để cập nhật stock
+                    "phone_model_instance": phone,
                     "quantity": cart_item.quantity,
-                    "price_at_purchase": float(phone.price) # Đảm bảo là float
+                    "price_at_purchase": float(phone.price) 
                 })
                 calculated_total_amount += float(cart_item.quantity) * float(phone.price)
             
@@ -83,8 +81,8 @@ def create_order_route():
             CartItem.query.filter_by(cart_id=cart.id).delete(synchronize_session=False) # Thêm synchronize_session
             cart.updated_at = datetime.utcnow()
         
-        db.session.commit() # Commit transaction chính
-    except ValueError as ve: # Bắt lỗi value từ kiểm tra logic
+        db.session.commit()
+    except ValueError as ve: 
         db.session.rollback()
         abort(400, description=str(ve))
     except Exception as e:
@@ -205,11 +203,10 @@ def update_order_status_route(order_id):
     if current_user_role == 'seller' and new_status not in [ORDER_STATUS_PROCESSING, ORDER_STATUS_SHIPPED, order.status]:
          abort(403, description=f"Người bán không được phép cập nhật đơn hàng sang trạng thái '{new_status}'.")
     
-    # QUAN TRỌNG: Xử lý hoàn kho nếu admin/seller cập nhật status thành CANCELLED qua endpoint này
     stock_reverted_message = ""
     if new_status == ORDER_STATUS_CANCELLED and order.status not in [ORDER_STATUS_CANCELLED, ORDER_STATUS_DELIVERED, ORDER_STATUS_FAILED]:
         try:
-            with db.session.begin_nested(): # Đảm bảo hoàn kho và cập nhật status là một khối
+            with db.session.begin_nested():
                 for item in order.items:
                     phone = item.phone
                     if phone:
@@ -243,8 +240,7 @@ def cancel_order_route(order_id):
     
     if current_user_role == 'admin':
         can_cancel_globally = True
-        # Admin có thể hủy nhiều trạng thái hơn, nhưng vẫn nên có giới hạn
-        if order.status in [ORDER_STATUS_DELIVERED]: # Ví dụ: admin không hủy đơn đã giao trừ khi có quy trình đặc biệt
+        if order.status in [ORDER_STATUS_DELIVERED]: #
             abort(400, description=f"Admin không thể hủy đơn hàng đã ở trạng thái '{order.status}' qua endpoint này. Sử dụng quy trình đặc biệt nếu cần.")
             
     elif current_user_role == 'buyer' and order.user_id == current_user_id:

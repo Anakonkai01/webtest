@@ -2,17 +2,15 @@
 from flask import Blueprint, request, jsonify, current_app, url_for, abort
 from sqlalchemy import asc, desc
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request
-from marshmallow import ValidationError # <<< SỬA Ở ĐÂY
+from marshmallow import ValidationError
 
 from app.extensions import db
 from app.models.phone import Phone
-# Bỏ ValidationError khỏi import này
 from app.schemas import phone_schema, phones_schema 
 from app.utils.decorators import seller_or_admin_required
 
 phones_bp = Blueprint('phones_bp', __name__)
 
-# ... (Route handle_get_or_options_phones giữ nguyên) ...
 @phones_bp.route('/', methods=['GET', 'OPTIONS'])
 def handle_get_or_options_phones():
     if request.method == 'OPTIONS':
@@ -130,7 +128,6 @@ def create_phone_route():
         abort(500, description="Lỗi máy chủ khi lưu sản phẩm.")
     return jsonify(phone_schema.dump(new_phone)), 201
 
-# ... (Các route get_phone_route, update_phone_route, delete_phone_route cũng cần sửa tương tự nếu có dùng .load() và bắt ValidationError)
 
 @phones_bp.route('/<int:phone_id>', methods=['GET'])
 def get_phone_route(phone_id):

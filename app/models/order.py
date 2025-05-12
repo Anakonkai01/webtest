@@ -8,7 +8,7 @@ ORDER_STATUS_PROCESSING = 'processing'
 ORDER_STATUS_SHIPPED = 'shipped'
 ORDER_STATUS_DELIVERED = 'delivered'
 ORDER_STATUS_CANCELLED = 'cancelled'
-ORDER_STATUS_FAILED = 'failed' # Đã thêm
+ORDER_STATUS_FAILED = 'failed' 
 
 ALLOWED_ORDER_STATUSES = [
     ORDER_STATUS_PENDING, ORDER_STATUS_PROCESSING, ORDER_STATUS_SHIPPED,
@@ -24,7 +24,6 @@ class Order(db.Model):
     status = db.Column(db.String(50), nullable=False, default=ORDER_STATUS_PENDING, index=True)
     shipping_address = db.Column(db.Text, nullable=True) # Nên là nullable=False khi tạo đơn hàng
     
-    # SỬA Ở ĐÂY: timezone.utc (chữ thường)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, 
                             default=lambda: datetime.now(timezone.utc),
