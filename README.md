@@ -74,12 +74,6 @@ webtest/
 │   ├── index.html              # Main HTML page
 │   ├── script.js               # Main JavaScript and Vue.js code
 │   └── style.css               # Custom CSS
-├── tests/                      # Unit test directory (if applicable)
-│   ├── conftest.py             # Pytest configuration
-│   ├── test_auth_api.py        # Auth API tests
-│   ├── test_cart_api.py        # Cart API tests
-│   ├── test_order_api.py       # Order API tests
-│   └── test_phone_api.py       # Phone API tests (if present)
 ├── venv/                       # Python virtual environment directory
 ├── .flaskenv                   # Environment variable configuration (optional)
 ├── .gitignore                  # Git ignore configuration
