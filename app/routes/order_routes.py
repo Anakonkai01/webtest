@@ -8,7 +8,7 @@ from app.extensions import db
 from app.models.order import (
     Order, OrderItem, ALLOWED_ORDER_STATUSES, ORDER_STATUS_PENDING, 
     ORDER_STATUS_CANCELLED, ORDER_STATUS_SHIPPED, ORDER_STATUS_DELIVERED, 
-    ORDER_STATUS_PROCESSING, ORDER_STATUS_FAILED # Thêm FAILED nếu có
+    ORDER_STATUS_PROCESSING, ORDER_STATUS_FAILED 
 )
 from app.models.cart import Cart, CartItem
 from app.models.phone import Phone

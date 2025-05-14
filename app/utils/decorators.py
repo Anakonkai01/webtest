@@ -21,7 +21,6 @@ def roles_required(*required_roles):
         return wrapper
     return decorator
 
-# Các decorator khác giữ nguyên
 def admin_required(fn):
     return roles_required('admin')(fn)
 

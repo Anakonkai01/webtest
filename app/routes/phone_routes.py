@@ -159,7 +159,7 @@ def update_phone_route(phone_id):
         abort(400, description="Không có dữ liệu được cung cấp để cập nhật.")
     try:
         validated_data = phone_schema.load(json_data, partial=True, unknown='EXCLUDE')
-    except ValidationError as err: # Bắt lỗi từ marshmallow
+    except ValidationError as err: 
         abort(400, description=err.messages)
     if not validated_data:
          abort(400, description="Không có trường hợp lệ nào được cung cấp để cập nhật.")

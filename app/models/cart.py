@@ -1,5 +1,5 @@
 # phone_management_api/app/models/cart.py
-from datetime import datetime, timezone # Đảm bảo timezone được import từ datetime
+from datetime import datetime, timezone 
 from app.extensions import db
 from sqlalchemy import CheckConstraint, UniqueConstraint
 
@@ -20,13 +20,13 @@ class Cart(db.Model):
     @property
     def total_price(self):
         total = 0
-        for item in self.items.all(): # Thêm .all() để duyệt qua các item thực sự
+        for item in self.items.all(): 
             if item.phone and item.phone.price is not None and item.quantity is not None:
                 total += item.quantity * item.phone.price
         return round(total, 2)
 
     def is_empty(self):
-        return not self.items.first() # True nếu không có item nào
+        return not self.items.first()
 
     def __repr__(self):
         return f'<Cart ID: {self.id} UserID: {self.user_id}>'

@@ -1,5 +1,5 @@
 # phone_management_api/app/models/order.py
-from datetime import datetime, timezone # Đảm bảo timezone được import từ datetime
+from datetime import datetime, timezone 
 from app.extensions import db
 from sqlalchemy import CheckConstraint
 
@@ -22,7 +22,7 @@ class Order(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     total_amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), nullable=False, default=ORDER_STATUS_PENDING, index=True)
-    shipping_address = db.Column(db.Text, nullable=True) # Nên là nullable=False khi tạo đơn hàng
+    shipping_address = db.Column(db.Text, nullable=True) 
     
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, 

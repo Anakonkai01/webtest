@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify, abort, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from datetime import datetime
-from marshmallow import ValidationError # 
+from marshmallow import ValidationError 
 
 from app.extensions import db
 from app.models.cart import Cart, CartItem
